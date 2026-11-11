@@ -1,0 +1,4 @@
+# O que o RD já leu (tem o identificador interno de cada contato): fica só no cache do GitHub Actions
+.cache/
+node_modules/
+*.log

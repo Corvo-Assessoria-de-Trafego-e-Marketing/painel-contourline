@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Painel Contourline</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="favicon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Visual do template dos painéis Corvo: faixa escura, barra de filtros fixa, abas, cartões e tabelas roláveis. */
+:root{
+  color-scheme:light;
+  --plane:#eef1f5;--surface:#fff;--surface-2:#f7f9fb;--ink:#0d1017;--ink-2:#535a66;--muted:#868d99;
+  --border:rgba(13,16,23,.10);--border-2:rgba(13,16,23,.16);
+  --accent:#2a78d6;--accent-ink:#1c5cab;--accent-wash:rgba(42,120,214,.10);
+  --good:#0ca30c;--good-ink:#0a7c0a;--good-wash:rgba(12,163,12,.11);
+  --warn:#b4790a;--warn-wash:rgba(230,157,20,.14);
+  --crit:#d03b3b;--crit-ink:#b32a2a;--crit-wash:rgba(208,59,59,.11);
+  --grid:#e4e7ec;--area-top:rgba(42,120,214,.28);
+  --header:#12151b;--header-ink:#eef1f5;--header-sub:#9aa2af;
+  --s1:#2a78d6;--s2:#0f9b8e;--s3:#7a5af0;--s4:#d9822b;--s5:#c2417a;--s6:#9aa3b2;
+  --shadow:0 1px 2px rgba(13,16,23,.05),0 10px 28px rgba(13,16,23,.055);--r:14px;
+  --font-display:"Fraunces",Georgia,"Times New Roman",serif;
+  --font-ui:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --plane:#0a0c10;--surface:#15181e;--surface-2:#1a1e25;--ink:#f1f3f7;--ink-2:#a7aeba;--muted:#7c838f;
+  --border:rgba(255,255,255,.10);--border-2:rgba(255,255,255,.17);
+  --accent:#3d8bea;--accent-ink:#82b4f1;--accent-wash:rgba(61,139,234,.16);
+  --good:#28b828;--good-ink:#54cf54;--good-wash:rgba(40,184,40,.16);--warn:#e0a52a;--warn-wash:rgba(224,165,42,.16);
+  --crit:#e86b6b;--crit-ink:#f08a8a;--crit-wash:rgba(232,107,107,.16);
+  --grid:#282c33;--area-top:rgba(61,139,234,.34);
+  --header:#0d0f13;--header-ink:#eef1f5;--header-sub:#8b93a0;
+  --s1:#3d8bea;--s2:#22b5a6;--s3:#9479f5;--s4:#e89a4a;--s5:#de5f97;--s6:#6d7584;
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 10px 28px rgba(0,0,0,.4);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --plane:#0a0c10;--surface:#15181e;--surface-2:#1a1e25;--ink:#f1f3f7;--ink-2:#a7aeba;--muted:#7c838f;
+  --border:rgba(255,255,255,.10);--border-2:rgba(255,255,255,.17);
+  --accent:#3d8bea;--accent-ink:#82b4f1;--accent-wash:rgba(61,139,234,.16);
+  --good:#28b828;--good-ink:#54cf54;--good-wash:rgba(40,184,40,.16);--warn:#e0a52a;--warn-wash:rgba(224,165,42,.16);
+  --crit:#e86b6b;--crit-ink:#f08a8a;--crit-wash:rgba(232,107,107,.16);
+  --grid:#282c33;--area-top:rgba(61,139,234,.34);
+  --header:#0d0f13;--header-ink:#eef1f5;--header-sub:#8b93a0;
+  --s1:#3d8bea;--s2:#22b5a6;--s3:#9479f5;--s4:#e89a4a;--s5:#de5f97;--s6:#6d7584;
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 10px 28px rgba(0,0,0,.4);color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--plane);color:var(--ink);font-family:var(--font-ui);font-size:14px;line-height:1.45}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{background:var(--header);color:var(--header-ink)}
+header.top .wrap{padding-block:22px 18px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.brand h1{font-family:var(--font-display);font-weight:600;font-size:28px;margin:0;letter-spacing:-.01em}
+.brand p{margin:2px 0 0;color:var(--header-sub);font-size:13px}
+.stamp{font-family:var(--font-mono);font-size:11.5px;color:var(--header-sub);text-align:right}
+.stamp b{color:var(--header-ink);font-weight:500}
+.aviso{background:var(--warn-wash);border-bottom:1px solid var(--border)}
+.aviso .wrap{padding-block:9px;font-size:13px}
+.bar{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--border)}
+.bar .wrap{display:flex;flex-direction:column;gap:10px;padding-block:10px}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{appearance:none;border:0;background:transparent;color:var(--ink-2);font:600 13.5px var(--font-ui);padding:8px 12px;border-radius:9px;cursor:pointer;white-space:nowrap}
+.tab:hover{background:var(--surface-2);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--accent-wash);color:var(--accent-ink)}
+.filters{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chip{appearance:none;border:1px solid var(--border-2);background:var(--surface);color:var(--ink-2);font:500 12.5px var(--font-ui);padding:5px 10px;border-radius:99px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.sel{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.sel select{font:500 13px var(--font-ui);color:var(--ink);background:var(--surface-2);border:1px solid var(--border-2);border-radius:8px;padding:5px 8px;text-transform:none;letter-spacing:0;max-width:220px}
+.periodo-txt{font:500 12px var(--font-mono);color:var(--muted)}
+button:focus-visible,select:focus-visible,tr[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main .wrap{padding-block:22px 40px;display:flex;flex-direction:column;gap:18px}
+section[data-view]{display:flex;flex-direction:column;gap:18px}
+[hidden]{display:none!important}
+.grid{display:grid;gap:14px}
+.k6{grid-template-columns:repeat(6,minmax(0,1fr))}
+.c2{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
+.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:1060px){.k6{grid-template-columns:repeat(3,minmax(0,1fr))}.c2,.c3{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:560px){.k6{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:16px 18px;min-width:0}
+.card h2{font-family:var(--font-display);font-weight:600;font-size:18px;margin:0 0 2px;text-wrap:balance}
+.card .sub{color:var(--muted);font-size:12.5px;margin:0 0 12px}
+.kpi{display:flex;flex-direction:column;gap:4px}
+.kpi .lab{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.kpi .val{font:600 25px var(--font-ui);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.kpi .note{font-size:12px;color:var(--ink-2)}
+.kpi.hero{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.kpi.hero .lab,.kpi.hero .note{color:color-mix(in srgb,var(--surface) 72%,transparent)}
+.meter{height:6px;background:color-mix(in srgb,var(--surface) 22%,transparent);border-radius:99px;overflow:hidden;margin-top:4px}
+.meter i{display:block;height:100%;background:var(--accent)}
+.tag{display:inline-block;font:600 10.5px var(--font-ui);letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:99px;background:var(--surface-2);color:var(--ink-2);border:1px solid var(--border)}
+.tag.good{background:var(--good-wash);color:var(--good-ink);border-color:transparent}
+.tag.warn{background:var(--warn-wash);color:var(--warn);border-color:transparent}
+.tag.crit{background:var(--crit-wash);color:var(--crit-ink);border-color:transparent}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--good);margin-right:6px;vertical-align:1px}
+.dot.off{background:var(--s6)}
+.journey{display:flex;flex-direction:column;gap:7px}
+.step{display:grid;grid-template-columns:170px minmax(0,1fr) 110px;gap:10px;align-items:center}
+.step .nm{font-size:13px;color:var(--ink-2);font-weight:500}
+.step .tr{height:26px;background:var(--surface-2);border-radius:7px;overflow:hidden;position:relative}
+.step .tr i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:7px;opacity:.85}
+.step .tr span{position:absolute;left:9px;top:50%;transform:translateY(-50%);font:600 12.5px var(--font-ui);font-variant-numeric:tabular-nums;color:var(--ink)}
+.step.gargalo .tr i{background:var(--crit)}
+.step .pc{font:500 12px var(--font-mono);color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.step.gargalo .pc{color:var(--crit-ink);font-weight:600}
+@media (max-width:560px){.step{grid-template-columns:100px minmax(0,1fr) 76px}.step .nm{font-size:12px}}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:13px}
+th{font:600 11px var(--font-ui);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right;padding:8px 10px;border-bottom:1px solid var(--border-2);white-space:nowrap}
+th.l,td.l,th:first-child,td:first-child{text-align:left}
+td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+tr.front td{background:var(--surface-2);font-weight:700}
+tr.front td:first-child{font-family:var(--font-display);font-weight:600;font-size:14.5px}
+tr.prod td:first-child{padding-left:22px;color:var(--ink-2)}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--accent-wash)}
+.mono{font-family:var(--font-mono);font-size:12px}
+.bars{display:flex;flex-direction:column;gap:8px}
+.brow{display:grid;grid-template-columns:170px minmax(0,1fr) 130px;gap:10px;align-items:center;font-size:13px}
+.brow>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brow .t{height:14px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+.brow .t i{display:block;height:100%;border-radius:5px}
+.brow .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+@media (max-width:560px){.brow{grid-template-columns:100px minmax(0,1fr) 96px}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink-2);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+svg text{font-family:var(--font-ui)}
+.alert{border-radius:var(--r);padding:12px 16px;background:var(--warn-wash)}
+.alert b{color:var(--warn)}
+.alert.crit{background:var(--crit-wash)}
+.alert.crit b{color:var(--crit-ink)}
+.vazio{color:var(--muted);font-size:13px;padding:8px 0}
+.def{font-size:12.5px;color:var(--ink-2);border-left:3px solid var(--border-2);padding:2px 0 2px 10px;margin:10px 0 0}
+.seg{display:inline-flex;border:1px solid var(--border-2);border-radius:9px;overflow:hidden}
+.seg button{appearance:none;border:0;background:var(--surface);color:var(--ink-2);font:600 12.5px var(--font-ui);padding:6px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent-wash);color:var(--accent-ink)}
+.head-row{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:flex-start}
+footer .wrap{padding-block:0 30px;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brand"><h1>Contourline</h1><p>Captação · Meta Ads, Google Ads e RD Station</p></div>
+  <div class="stamp" id="stamp">Carregando…</div>
+</div></header>
+<div class="aviso" id="aviso" hidden><div class="wrap" id="aviso-txt"></div></div>
+
+<nav class="bar" aria-label="Navegação do painel"><div class="wrap">
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div class="filters">
+    <div class="chips" role="group" aria-label="Período" id="periodo"></div>
+    <span class="periodo-txt" id="periodo-txt"></span>
+    <label class="sel" for="f-frente">Frente <select id="f-frente"></select></label>
+    <label class="sel" for="f-produto">Produto <select id="f-produto"></select></label>
+    <label class="sel" for="f-plat">Plataforma <select id="f-plat"><option value="todas">Meta + Google</option><option value="meta">Só Meta</option><option value="google">Só Google</option></select></label>
+  </div>
+</div></nav>
+
+<main><div class="wrap">
+<section data-view="resumo">
+  <div class="grid k6" id="kpis"></div>
+  <div class="grid c2">
+    <div class="card">
+      <h2>Jornada do lead</h2>
+      <p class="sub">Do anúncio à venda, com a passagem de uma etapa para a outra. Em vermelho, a etapa onde mais se perde gente.</p>
+      <div class="journey" id="journey"></div>
+      <p class="def"><b>Qualificado no CRM</b>: quer investir em equipamento, informou investimento acima de R$ 0 e tem o perfil da linha (nas linhas médicas: médico, dono de clínica, investidor ou locador). É diferente do lead que a plataforma conta como qualificado no formulário.</p>
+    </div>
+    <div class="card">
+      <h2>Investimento por frente</h2>
+      <p class="sub">Quanto cada frente levou do total no período.</p>
+      <div class="bars" id="por-frente"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="head-row"><div><h2>Investimento por dia</h2><p class="sub" id="diario-sub"></p></div><div class="legend" style="margin:0"><span><i style="background:var(--s1)"></i>Meta</span><span><i style="background:var(--s4)"></i>Google</span></div></div>
+    <div id="diario"></div>
+  </div>
+</section>
+
+<section data-view="produtos" hidden>
+  <div class="card">
+    <h2>Frentes e produtos</h2>
+    <p class="sub">Uma linha por produto. Clique num produto para ver as campanhas dele.</p>
+    <div class="tbl"><table id="t-prod"></table></div>
+    <p class="def">"% do total" é o realizado no período. Custo por qualificado = investimento do produto (Meta + Google) ÷ qualificados no CRM. "Geral da frente" reúne anúncios e formulários sem um produto só (site da frente, topo com vários produtos).</p>
+  </div>
+</section>
+
+<section data-view="comercial" hidden>
+  <div class="alert" id="alerta-parados" hidden></div>
+  <div class="grid k6" id="kpis-com"></div>
+  <div class="grid c2">
+    <div class="card"><h2>Leads por semana de cadastro</h2><p class="sub">Cada barra é uma semana; as cores mostram onde esses leads estão hoje no CRM.</p><div id="coorte"></div><div class="legend" id="coorte-leg"></div></div>
+    <div class="card"><h2>Motivos de perda</h2><p class="sub">Campo de motivo de perda do CRM.</p><div class="bars" id="perdas"></div></div>
+  </div>
+  <div class="card"><h2>Etapas do CRM por frente</h2><p class="sub">Onde os leads do período estão agora.</p><div class="tbl"><table id="t-etapas"></table></div></div>
+</section>
+
+<section data-view="campanhas" hidden>
+  <div class="card">
+    <div class="head-row"><div><h2>Campanhas</h2><p class="sub">Resultado da plataforma ao lado do resultado no CRM. O CRM liga o lead à campanha pela UTM.</p></div>
+      <div class="seg" role="group" aria-label="Plataforma da tabela"><button type="button" id="seg-meta" aria-pressed="true">Meta</button><button type="button" id="seg-google" aria-pressed="false">Google</button></div></div>
+    <div class="tbl"><table id="t-camp"></table></div>
+    <p class="def">Leads no CRM por campanha só aparecem quando a UTM chega ao RD (Innove e Visbody desde 06/11). No Google, a maioria das campanhas não leva UTM com o nome da campanha.</p>
+  </div>
+  <div class="grid c2">
+    <div class="card"><h2>Anúncios com menor custo por lead</h2><p class="sub">Meta, mínimo de R$ 300 gastos no período. Custo pelo lead da plataforma.</p><div class="bars" id="cri-bom"></div></div>
+    <div class="card"><h2>Anúncios para revisar</h2><p class="sub">Meta, R$ 300 ou mais gastos com o maior custo por lead (ou nenhum lead), sem contar alcance e impulsionamento.</p><div class="bars" id="cri-ruim"></div></div>
+  </div>
+</section>
+
+<section data-view="black" hidden>
+  <div class="grid k6" id="kpis-black"></div>
+  <div class="grid c2">
+    <div class="card"><h2>Ritmo de gasto</h2><p class="sub" id="black-sub"></p><div id="black-ritmo"></div></div>
+    <div class="card"><h2>Black por produto</h2><p class="sub">Campanhas da Black (Meta e Google) e leads dos formulários e campanhas da Black no CRM.</p><div class="tbl"><table id="t-black"></table></div></div>
+  </div>
+</section>
+
+<section data-view="eventos" hidden>
+  <div class="card">
+    <h2>Webinars e eventos</h2>
+    <p class="sub">Inscrições no RD (formulário do evento) e o investimento das campanhas do evento no Meta.</p>
+    <div class="tbl"><table id="t-ev"></table></div>
+    <p class="def">A campanha entra no evento quando o nome dela traz a mesma data do evento. Comparecimento depende da lista do Zoom enviada pela Contourline.</p>
+  </div>
+</section>
+
+<section data-view="dados" hidden>
+  <div class="grid c2">
+    <div class="card"><h2>Plataformas × CRM</h2><p class="sub">Leads contados pelas plataformas e leads de produto que chegaram ao RD. Diferença grande indica perda de rastreamento, integração ou lead repetido.</p><div class="tbl"><table id="t-gap"></table></div></div>
+    <div class="card"><h2>Origem dos leads no CRM</h2><p class="sub">Percentual dos leads do RD com origem paga identificada.</p><div class="bars" id="origem"></div></div>
+  </div>
+  <div class="card"><h2>Fora do público</h2><p class="sub">Leads que chegaram ao CRM, mas não são o cliente da Contourline.</p><div class="grid c3" id="fora"></div></div>
+</section>
+</div></main>
+<footer><div class="wrap">Fontes: Meta Marketing API, Google Ads API e RD Station (só números agregados, sem nome nem contato). Atualizado de hora em hora. Corvo Assessoria de Tráfego e Marketing.</div></footer>
+
+<script>
+/* ── configuração que muda de mês a mês ─────────────────────────────── */
+const CONFIG = {
+  teto: { "2026-11": 140000 },                                  // verba total do mês (Meta + Google)
+  black: { mes: "2026-11", verba: 50000, ate: "2026-11-30" },   // Black Experience
+};
+const FRENTES = ["Innove","Contourline Med","Cynosure","Lumenis","Visbody"];
+const COR = {"Innove":"var(--s1)","Contourline Med":"var(--s3)","Cynosure":"var(--s2)","Lumenis":"var(--s4)","Visbody":"var(--s5)","Marca":"var(--s6)","Perfis":"var(--s6)","Outros":"var(--s6)"};
+const TABS = [["resumo","Resumo"],["produtos","Frentes e produtos"],["comercial","Comercial"],["campanhas","Campanhas"],["black","Black Experience"],["eventos","Eventos"],["dados","Qualidade dos dados"]];
+const VENDAS = /^(VENDAS|FUNIL DE NOVAS VENDAS|FUNIL HIGH TICKET|SALES OPS)/i;
+const AVAN = /negocia|demonstra|fechamento|solu[cç][aã]o e proposta|valida[cç][aã]o|pend[eê]ncias contratuais|aprova/i;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const brl = n => "R$ " + Math.round(n || 0).toLocaleString("pt-BR");
+const brl2 = n => isFinite(n) && n > 0 ? "R$ " + n.toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2}) : "—";
+const int = n => Math.round(n || 0).toLocaleString("pt-BR");
+const pct = (a, b) => b ? Math.round(100 * a / b) + "%" : "—";
+const soma = (L, f) => L.reduce((a, r) => a + (typeof f === "function" ? f(r) : r[f]), 0);
+const addDias = (d, n) => { const x = new Date(d + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+const fmtD = d => d.slice(8, 10) + "/" + d.slice(5, 7);
+
+const st = { per: "mes", f: "todas", p: "todos", plat: "todas", camp: "meta", hoje: null };
+let MID = [], RD = [], EV = [], META = null, GOO = null, RDM = null;
+
+/* ── dados ─────────────────────────────────────────────────────────── */
+async function carregar(url) { try { const r = await fetch(url + "?v=" + Date.now()); return r.ok ? await r.json() : null; } catch { return null; } }
+async function iniciar() {
+  [META, GOO, RDM] = await Promise.all([carregar("data.json"), carregar("data-google.json"), carregar("data-rd.json")]);
+  if (META) for (const r of META.rows) { const c = META.campanhas[r[1]], a = META.anuncios[r[2]];
+    MID.push({ d: r[0], plat: "meta", frente: a.frente, produto: a.produto, tipo: a.tipo, black: c.black, camp: c.nome, campAtiva: c.ativa, ad: a.nome, gasto: r[3], cliques: r[5], leads: c.tipo === "Evento" ? 0 : r[6], insc: r[7] }); }
+  if (GOO) for (const r of GOO.rows) { const c = GOO.campanhas[r[1]];
+    MID.push({ d: r[0], plat: "google", frente: c.frente, produto: c.produto, tipo: c.tipo, black: c.black, camp: c.nome, campAtiva: c.ativa, ad: null, gasto: r[2], cliques: r[4], leads: r[5], insc: 0 }); }
+  if (RDM) {
+    for (const r of RDM.leads) RD.push({ d: r[0], frente: r[1], produto: r[2], black: !!r[3], origem: r[4], camp: r[5], q: r[6], etapa: r[7], crm: r[8], perda: r[9], dono: r[10], n: r[11],
+      neg: /›/.test(r[8]), vendas: VENDAS.test(r[8]), avan: VENDAS.test(r[8]) && AVAN.test(r[8]) });
+    for (const r of RDM.eventos) EV.push({ d: r[0], id: r[1], origem: r[2], camp: r[3], n: r[4] });
+  }
+  st.hoje = (META && META.meta.hoje) || (GOO && GOO.meta.hoje) || new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+  carimbo(); montarControles(); addEventListener("hashchange", render); render();
+}
+function carimbo() {
+  const h = iso => iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+  $("#stamp").innerHTML = `Meta <b>${h(META?.meta.gerado)}</b> · Google <b>${h(GOO?.meta.gerado)}</b> · RD <b>${h(RDM?.meta.gerado)}</b>`;
+  const av = [];
+  if (!META) av.push("Os dados do Meta não carregaram.");
+  if (!GOO) av.push("Os dados do Google não carregaram; o painel mostra só o Meta.");
+  if (!RDM) av.push("Os dados do RD não carregaram; as colunas do CRM ficam vazias.");
+  else if (!RDM.meta.varredura_completa) av.push("O RD ainda está carregando o histórico desde " + fmtD(RDM.meta.desde) + "; os números do CRM sobem nas próximas horas.");
+  if (av.length) { $("#aviso").hidden = false; $("#aviso-txt").textContent = av.join(" "); }
+}
+
+/* ── filtros ───────────────────────────────────────────────────────── */
+function intervalo() {
+  const h = st.hoje, ontem = addDias(h, -1);
+  switch (st.per) {
+    case "hoje": return [h, h];
+    case "ontem": return [ontem, ontem];
+    case "7d": return [addDias(h, -7), ontem];
+    case "30d": return [addDias(h, -30), ontem];
+    case "90d": return [addDias(h, -90), ontem];
+    case "mes": return [h.slice(0, 8) + "01", h];
+    case "mespas": { const x = new Date(h.slice(0, 8) + "01T12:00:00Z"); x.setUTCDate(0); const fim = x.toISOString().slice(0, 10); return [fim.slice(0, 8) + "01", fim]; }
+    default: return ["2000-01-01", h];
+  }
+}
+const naData = (d, [a, b]) => d >= a && d <= b;
+const okFP = r => (st.f === "todas" || r.frente === st.f) && (st.p === "todos" || r.produto === st.p);
+function mid(extra = () => true) { const iv = intervalo(); return MID.filter(r => naData(r.d, iv) && okFP(r) && (st.plat === "todas" || r.plat === st.plat) && extra(r)); }
+function rd(extra = () => true) { const iv = intervalo(); return RD.filter(r => naData(r.d, iv) && okFP(r) && (st.plat === "todas" || (st.plat === "meta" ? r.origem === "Meta pago" : r.origem === "Google pago")) && extra(r)); }
+
+function montarControles() {
+  $("#tabs").innerHTML = TABS.map(([id, n]) => `<button class="tab" role="tab" type="button" data-v="${id}" aria-selected="false" id="tab-${id}">${n}</button>`).join("");
+  $("#tabs").onclick = e => { const b = e.target.closest(".tab"); if (b) location.hash = b.dataset.v; };
+  const per = [["hoje","Hoje"],["ontem","Ontem"],["7d","7 dias"],["30d","30 dias"],["mes","Este mês"],["mespas","Mês passado"],["tudo","Tudo"]];
+  $("#periodo").innerHTML = per.map(([k, n]) => `<button type="button" class="chip" data-k="${k}" aria-pressed="${k === st.per}">${n}</button>`).join("");
+  $("#periodo").onclick = e => { const b = e.target.closest(".chip"); if (!b) return; st.per = b.dataset.k; [...$("#periodo").children].forEach(x => x.setAttribute("aria-pressed", x === b)); render(); };
+  const frentes = [...new Set([...FRENTES, ...MID.map(r => r.frente)])];
+  $("#f-frente").innerHTML = `<option value="todas">Todas</option>` + frentes.map(f => `<option>${esc(f)}</option>`).join("");
+  $("#f-frente").onchange = e => { st.f = e.target.value; st.p = "todos"; produtosSel(); render(); };
+  $("#f-produto").onchange = e => { st.p = e.target.value; render(); };
+  $("#f-plat").onchange = e => { st.plat = e.target.value; render(); };
+  $("#seg-meta").onclick = () => { st.camp = "meta"; $("#seg-meta").setAttribute("aria-pressed", "true"); $("#seg-google").setAttribute("aria-pressed", "false"); campanhas(); };
+  $("#seg-google").onclick = () => { st.camp = "google"; $("#seg-google").setAttribute("aria-pressed", "true"); $("#seg-meta").setAttribute("aria-pressed", "false"); campanhas(); };
+  produtosSel();
+}
+function produtosSel() {
+  const ps = [...new Set([...MID, ...RD].filter(r => st.f === "todas" || r.frente === st.f).map(r => r.produto))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  $("#f-produto").innerHTML = `<option value="todos">Todos</option>` + ps.map(p => `<option${p === st.p ? " selected" : ""}>${esc(p)}</option>`).join("");
+}
+function blackVisivel() { const iv = intervalo(); return MID.some(r => r.black && r.gasto > 0 && naData(r.d, iv)); }
+function mostrar() {
+  const temBlack = blackVisivel();
+  document.querySelector('[data-v="black"]').hidden = !temBlack;
+  let v = (location.hash || "#resumo").slice(1);
+  if (!TABS.some(t => t[0] === v) || (v === "black" && !temBlack)) v = "resumo";
+  document.querySelectorAll("section[data-view]").forEach(s => s.hidden = s.dataset.view !== v);
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.v === v));
+  const [a, b] = intervalo(); $("#periodo-txt").textContent = st.per === "tudo" ? "desde " + fmtD(META?.meta.desde || a) : (a === b ? fmtD(a) : fmtD(a) + " a " + fmtD(b));
+}
+
+/* ── componentes ───────────────────────────────────────────────────── */
+function kpi(lab, val, note, hero, meter) { return `<div class="card kpi${hero ? " hero" : ""}"><span class="lab">${lab}</span><span class="val">${val}</span>${meter != null ? `<div class="meter"><i style="width:${Math.min(100, meter)}%"></i></div>` : ""}<span class="note">${note || ""}</span></div>`; }
+function barras(el, itens, cor, fmt) {
+  const mx = Math.max(1, ...itens.map(x => x[1]));
+  $(el).innerHTML = itens.length ? itens.map(([n, v, c]) => `<div class="brow"><span title="${esc(n)}">${esc(n)}</span><div class="t"><i style="width:${100 * v / mx}%;background:${c || cor}"></i></div><span class="v">${fmt(v)}</span></div>`).join("") : `<p class="vazio">Sem dados no período.</p>`;
+}
+
+/* ── Resumo ────────────────────────────────────────────────────────── */
+function resumo() {
+  const M = mid(), R = rd();
+  const inv = soma(M, "gasto"), lp = soma(M, "leads"), lc = soma(R, "n"), q = soma(R.filter(r => r.q === "Sim"), "n");
+  const ng = soma(R.filter(r => r.neg), "n"), fv = soma(R.filter(r => r.vendas), "n"), av = soma(R.filter(r => r.avan), "n");
+  const mes = st.hoje.slice(0, 7), teto = CONFIG.teto[mes];
+  let notaInv = `Meta ${brl(soma(M.filter(r => r.plat === "meta"), "gasto"))} · Google ${brl(soma(M.filter(r => r.plat === "google"), "gasto"))}`, meter = null;
+  if (st.per === "mes" && teto && st.f === "todas" && st.p === "todos" && st.plat === "todas") {
+    const ontem = addDias(st.hoje, -1), ate = MID.filter(r => r.d >= mes + "-01" && r.d <= ontem);
+    const ult3 = MID.filter(r => r.d >= addDias(st.hoje, -3) && r.d <= ontem);
+    const ultDia = new Date(Date.UTC(+mes.slice(0, 4), +mes.slice(5, 7), 0)).getUTCDate();
+    const restam = ultDia - +st.hoje.slice(8, 10) + 1;
+    const proj = soma(ate, "gasto") + soma(ult3, "gasto") / 3 * restam;
+    notaInv = `Verba do mês ${brl(teto)} · no ritmo dos últimos 3 dias, fecha em ${brl(proj)}`; meter = 100 * inv / teto;
+  }
+  $("#kpis").innerHTML = kpi("Investimento", brl(inv), notaInv, true, meter)
+    + kpi("Leads nas plataformas", int(lp), "Meta (lead) + Google (conversões)")
+    + kpi("Leads no CRM", int(lc), pct(lc, lp) + " dos leads das plataformas")
+    + kpi("Qualificados no CRM", int(q), pct(q, lc) + " dos leads do CRM")
+    + kpi("Custo por qualificado", brl2(inv / q), "Custo por lead no CRM: " + brl2(inv / lc))
+    + kpi("Chegaram ao funil de vendas", int(fv), int(av) + " em etapa avançada");
+  const E = [["Leads nas plataformas", lp], ["Leads no CRM", lc], ["Com negociação", ng], ["Funil de vendas", fv], ["Etapa avançada", av]];
+  let pior = -1, taxa = 2; for (let i = 1; i < E.length; i++) { if (E[i - 1][1] < 5) continue; const t = E[i][1] / E[i - 1][1]; if (t < taxa) { taxa = t; pior = i; } }
+  const larg = v => Math.max(3, 100 * v / Math.max(1, E[0][1], E[1][1]));
+  const passo = ([n, v], i) => `<div class="step${i === pior ? " gargalo" : ""}"><span class="nm">${n}</span><div class="tr"><i style="width:${larg(v)}%"></i><span>${int(v)}</span></div><span class="pc">${i ? pct(v, E[i - 1][1]) + " passam" : brl2(inv / v) + "/lead"}</span></div>`;
+  $("#journey").innerHTML = `<div class="step"><span class="nm">Investimento</span><div class="tr"><i style="width:100%;opacity:.22"></i><span>${brl(inv)}</span></div><span class="pc"></span></div>`
+    + E.slice(0, 2).map(passo).join("")
+    + `<div class="step"><span class="nm" style="padding-left:12px">↳ qualificados</span><div class="tr"><i style="width:${larg(q)}%;background:var(--good);opacity:.7"></i><span>${int(q)}</span></div><span class="pc">${pct(q, lc)} do CRM</span></div>`
+    + E.slice(2).map((x, j) => passo(x, j + 2)).join("");
+  const fr = {}; for (const r of M) fr[r.frente] = (fr[r.frente] || 0) + r.gasto;
+  const tot = soma(Object.values(fr), x => x);
+  barras("#por-frente", Object.entries(fr).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).map(([f, v]) => [f, v, COR[f]]), "var(--s6)", v => pct(v, tot) + " · " + brl(v));
+  diario(M);
+}
+function diario(M) {
+  let [a, b] = intervalo(); if (a < (META?.meta.desde || "2000")) a = META?.meta.desde || GOO?.meta.desde || a;
+  const dias = []; for (let d = a; d <= b && dias.length < 400; d = addDias(d, 1)) dias.push(d);
+  if (dias.length < 2) { const fim = st.hoje; dias.length = 0; for (let d = addDias(fim, -13); d <= fim; d = addDias(d, 1)) dias.push(d); }
+  $("#diario-sub").textContent = `Meta e Google, ${fmtD(dias[0])} a ${fmtD(dias[dias.length - 1])}.`;
+  const filt = MID.filter(r => okFP(r) && (st.plat === "todas" || r.plat === st.plat));
+  const m = {}, g = {}; for (const r of filt) { const o = r.plat === "meta" ? m : g; o[r.d] = (o[r.d] || 0) + r.gasto; }
+  const N = dias.length, W = 1000, H = 210, pl = 50, pr = 10, pt = 12, pb = 26;
+  const mx0 = Math.max(1, ...dias.map(d => (m[d] || 0) + (g[d] || 0))), passo = mx0 > 4000 ? 2000 : mx0 > 2000 ? 1000 : mx0 > 400 ? 200 : 50, mx = Math.ceil(mx0 / passo) * passo;
+  const bw = (W - pl - pr) / N * .7, x = i => pl + (i + .5) * (W - pl - pr) / N, y = v => pt + (H - pt - pb) * (1 - v / mx);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Investimento por dia, Meta e Google">`;
+  for (let k = 0; k <= 4; k++) { const v = mx * k / 4; s += `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${pl - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${v >= 1000 ? (v / 1000).toLocaleString("pt-BR") + " mil" : v}</text>`; }
+  const salto = Math.ceil(N / 10);
+  dias.forEach((d, i) => { const mv = m[d] || 0, gv = g[d] || 0;
+    s += `<rect x="${x(i) - bw / 2}" y="${y(mv)}" width="${bw}" height="${y(0) - y(mv)}" fill="var(--s1)"><title>${fmtD(d)} · Meta ${brl(mv)}</title></rect><rect x="${x(i) - bw / 2}" y="${y(mv + gv)}" width="${bw}" height="${y(mv) - y(mv + gv)}" fill="var(--s4)"><title>${fmtD(d)} · Google ${brl(gv)}</title></rect>`;
+    if (i % salto === 0 || i === N - 1) s += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtD(d)}</text>`; });
+  $("#diario").innerHTML = s + "</svg>";
+}
+
+/* ── Frentes e produtos ────────────────────────────────────────────── */
+function produtos() {
+  const M = mid(), R = rd(), tot = soma(M, "gasto"), P = {};
+  const k = r => r.frente + "|" + r.produto;
+  const linha = r => P[k(r)] = P[k(r)] || { f: r.frente, p: r.produto, inv: 0, lp: 0, lc: 0, q: 0, fv: 0, perdas: {} };
+  for (const r of M) { const x = linha(r); x.inv += r.gasto; x.lp += r.leads; }
+  for (const r of R) { const x = linha(r); x.lc += r.n; if (r.q === "Sim") x.q += r.n; if (r.vendas) x.fv += r.n; if (r.perda) x.perdas[r.perda] = (x.perdas[r.perda] || 0) + r.n; }
+  const ordem = [...FRENTES, ...new Set(Object.values(P).map(x => x.f).filter(f => !FRENTES.includes(f)))];
+  const top = o => { const e = Object.entries(o).sort((a, b) => b[1] - a[1])[0]; return e ? e[0].toLowerCase().replace(/^./, c => c.toUpperCase()) : "—"; };
+  let h = `<thead><tr><th>Frente / produto</th><th>Investimento</th><th>% do total</th><th>Leads plataformas</th><th>Leads CRM</th><th>Qualificados CRM</th><th>Custo por qualificado</th><th>Funil de vendas</th><th class="l">Principal motivo de perda</th></tr></thead><tbody>`;
+  let algum = false;
+  for (const f of ordem) {
+    const L = Object.values(P).filter(x => x.f === f && (x.inv > 0 || x.lc > 0 || x.lp > 0)).sort((a, b) => b.inv - a.inv); if (!L.length) continue; algum = true;
+    const s = c => soma(L, c), pf = {}; for (const x of L) for (const [m, n] of Object.entries(x.perdas)) pf[m] = (pf[m] || 0) + n;
+    h += `<tr class="front"><td><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:${COR[f] || "var(--s6)"};margin-right:8px"></span>${esc(f)}</td><td>${brl(s("inv"))}</td><td>${pct(s("inv"), tot)}</td><td>${int(s("lp"))}</td><td>${int(s("lc"))}</td><td>${int(s("q"))}</td><td>${brl2(s("inv") / s("q"))}</td><td>${int(s("fv"))}</td><td class="l">${esc(top(pf))}</td></tr>`;
+    for (const x of L) { const cq = x.inv / x.q;
+      const geral = /geral|perfis|^marca$/i.test(x.p);
+      const tag = geral || x.inv < 300 ? "" : !x.q ? '<span class="tag crit">sem qualificado</span>' : cq > 400 ? '<span class="tag crit">caro</span>' : cq < 80 ? '<span class="tag good">eficiente</span>' : "";
+      h += `<tr class="prod click" tabindex="0" data-f="${esc(x.f)}" data-p="${esc(x.p)}"><td>${esc(x.p)}</td><td>${brl(x.inv)}</td><td>${pct(x.inv, tot)}</td><td>${int(x.lp)}</td><td>${int(x.lc)}</td><td>${int(x.q)}</td><td>${brl2(cq)} ${tag}</td><td>${int(x.fv)}</td><td class="l">${esc(top(x.perdas))}</td></tr>`; }
+  }
+  $("#t-prod").innerHTML = algum ? h + "</tbody>" : `<tbody><tr><td class="vazio">Sem dados no período.</td></tr></tbody>`;
+  $("#t-prod").onclick = e => { const tr = e.target.closest("tr.click"); if (!tr) return; st.f = tr.dataset.f; $("#f-frente").value = st.f; st.p = tr.dataset.p; produtosSel(); location.hash = "campanhas"; render(); };
+}
+
+/* ── Comercial ─────────────────────────────────────────────────────── */
+function comercial() {
+  const R = rd(), lc = soma(R, "n"), ng = soma(R.filter(r => r.neg), "n"), fv = soma(R.filter(r => r.vendas), "n"), pd = soma(R.filter(r => r.perda), "n");
+  const semDono = soma(R.filter(r => !r.dono && !r.perda), "n");
+  const limite = addDias(st.hoje, -3), parados = soma(R.filter(r => r.q === "Sim" && !r.neg && !r.perda && r.d <= limite), "n");
+  $("#kpis-com").innerHTML = kpi("Com negociação", pct(ng, lc), int(ng) + " de " + int(lc) + " leads") + kpi("No funil de vendas", int(fv), pct(fv, lc) + " dos leads")
+    + kpi("Em etapa avançada", int(soma(R.filter(r => r.avan), "n")), "Negociação, demonstração, proposta ou contrato") + kpi("Perdidos", int(pd), pct(pd, lc) + " dos leads")
+    + kpi("Sem dono no CRM", int(semDono), "Leads em aberto sem responsável") + kpi("Qualificados parados", int(parados), "Sem negociação há mais de 3 dias");
+  $("#alerta-parados").hidden = !parados;
+  $("#alerta-parados").innerHTML = `<b>${int(parados)} leads qualificados sem negociação aberta há mais de 3 dias.</b> A lista com os nomes fica no CRM (o painel público não mostra dados pessoais).`;
+  const S = [["Perdido", "var(--crit)"], ["Sem negociação", "var(--s6)"], ["SDR", "var(--s1)"], ["Outros funis", "var(--s3)"], ["Funil de vendas", "var(--s2)"], ["Etapa avançada", "var(--good)"]];
+  const semana = d => { const x = new Date(d + "T12:00:00Z"); const w = (x.getUTCDay() + 6) % 7; x.setUTCDate(x.getUTCDate() - w); return x.toISOString().slice(0, 10); };
+  const C = {}; for (const r of R) { const w = semana(r.d); C[w] = C[w] || {}; C[w][r.etapa] = (C[w][r.etapa] || 0) + r.n; }
+  const ws = Object.keys(C).sort().slice(-10);
+  if (!ws.length) { $("#coorte").innerHTML = `<p class="vazio">Sem leads no período.</p>`; $("#coorte-leg").innerHTML = ""; }
+  else {
+    const W = 560, H = 230, pl = 40, pb = 24, tt = ws.map(w => soma(Object.values(C[w]), x => x)), mx0 = Math.max(...tt), passo = mx0 > 400 ? 100 : mx0 > 100 ? 50 : 10, mx = Math.ceil(mx0 / passo) * passo;
+    const bw = Math.min(56, (W - pl) / ws.length * .7), gap = (W - pl - bw * ws.length) / ws.length;
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Leads por semana de cadastro, pela etapa atual">`;
+    for (let k = 0; k <= 4; k++) { const v = mx * k / 4, yy = 8 + (H - 8 - pb) * (1 - v / mx); s += `<line x1="${pl}" x2="${W}" y1="${yy}" y2="${yy}" stroke="var(--grid)"/><text x="${pl - 6}" y="${yy + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`; }
+    ws.forEach((w, i) => { let acc = 0; const x0 = pl + gap / 2 + i * (bw + gap);
+      S.forEach(([n, c]) => { const v = C[w][n] || 0; if (!v) return; const y1 = 8 + (H - 8 - pb) * (1 - (acc + v) / mx), y0 = 8 + (H - 8 - pb) * (1 - acc / mx); s += `<rect x="${x0}" y="${y1}" width="${bw}" height="${y0 - y1}" fill="${c}"><title>Semana de ${fmtD(w)} · ${n}: ${v}</title></rect>`; acc += v; });
+      s += `<text x="${x0 + bw / 2}" y="${H - 7}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtD(w)}</text>`; });
+    $("#coorte").innerHTML = s + "</svg>"; $("#coorte-leg").innerHTML = S.map(([n, c]) => `<span><i style="background:${c}"></i>${n}</span>`).join("");
+  }
+  const P = {}; for (const r of R) if (r.perda) P[r.perda] = (P[r.perda] || 0) + r.n;
+  barras("#perdas", Object.entries(P).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([n, v]) => [n.toLowerCase().replace(/^./, c => c.toUpperCase()), v]), "var(--crit)", v => int(v) + " · " + pct(v, pd));
+  const ET = ["Sem negociação", "SDR", "Outros funis", "Funil de vendas", "Etapa avançada", "Perdido"];
+  const fs = FRENTES.filter(f => st.f === "todas" || f === st.f);
+  $("#t-etapas").innerHTML = `<thead><tr><th>Frente</th>${ET.map(e => `<th>${e}</th>`).join("")}<th>Total</th></tr></thead><tbody>` + fs.map(f => { const L = R.filter(r => r.frente === f); return `<tr><td>${f}</td>${ET.map(e => `<td${e === "Perdido" ? ' style="color:var(--crit-ink)"' : ""}>${int(soma(L.filter(r => r.etapa === e), "n"))}</td>`).join("")}<td><b>${int(soma(L, "n"))}</b></td></tr>`; }).join("") + "</tbody>";
+}
+
+/* ── Campanhas ─────────────────────────────────────────────────────── */
+function campanhas() {
+  const M = mid(r => r.plat === st.camp), R = rd(), C = {};
+  for (const r of M) { const c = C[r.camp] = C[r.camp] || { nome: r.camp, frente: r.frente, tipo: r.tipo, ativa: r.campAtiva, inv: 0, leads: 0, prods: new Set() }; c.inv += r.gasto; c.leads += r.leads; c.prods.add(r.produto); }
+  const crm = {}; for (const r of R) if (r.camp) { const k = r.camp.toLowerCase(); crm[k] = crm[k] || { lc: 0, q: 0 }; crm[k].lc += r.n; if (r.q === "Sim") crm[k].q += r.n; }
+  const L = Object.values(C).filter(c => c.inv > 0).sort((a, b) => b.inv - a.inv);
+  $("#t-camp").innerHTML = `<thead><tr><th>Campanha</th><th class="l">Frente</th><th class="l">Tipo</th><th>Investimento</th><th>Leads</th><th>Custo por lead</th><th>Leads CRM</th><th>Qualificados CRM</th><th>Custo por qualificado</th></tr></thead><tbody>`
+    + (L.length ? L.map(c => { const x = crm[c.nome.toLowerCase()] || { lc: 0, q: 0 }; return `<tr><td class="mono"><span class="dot${c.ativa ? "" : " off"}" title="${c.ativa ? "ativa" : "pausada"}"></span>${esc(c.nome)}</td><td class="l">${esc(c.frente)}</td><td class="l">${esc(c.tipo)}</td><td>${brl(c.inv)}</td><td>${int(c.leads)}</td><td>${brl2(c.inv / c.leads)}</td><td>${x.lc ? int(x.lc) : "—"}</td><td>${x.lc ? int(x.q) : "—"}</td><td>${x.q ? brl2(c.inv / x.q) : "—"}</td></tr>`; }).join("")
+      : `<tr><td colspan="9" class="vazio">Nenhuma campanha ${st.camp === "meta" ? "do Meta" : "do Google"} com gasto para esse filtro no período.</td></tr>`) + "</tbody>";
+  const A = {}; for (const r of mid(r => r.plat === "meta" && !["Alcance", "Impulsionamento", "Evento"].includes(r.tipo))) { const a = A[r.ad] = A[r.ad] || { inv: 0, leads: 0 }; a.inv += r.gasto; a.leads += r.leads; }
+  const AL = Object.entries(A).filter(([, a]) => a.inv >= 300);
+  const bons = AL.filter(([, a]) => a.leads > 0).sort((a, b) => a[1].inv / a[1].leads - b[1].inv / b[1].leads).slice(0, 6);
+  const ruins = AL.sort((a, b) => (b[1].leads ? b[1].inv / b[1].leads : 1e9) - (a[1].leads ? a[1].inv / a[1].leads : 1e9)).slice(0, 6);
+  barras("#cri-bom", bons.map(([n, a]) => [n, a.inv / a.leads]), "var(--good)", v => brl2(v) + "/lead");
+  barras("#cri-ruim", ruins.map(([n, a]) => [n, a.leads ? a.inv / a.leads : a.inv]), "var(--crit)", v => brl2(v));
+  const nota = ruins.map(([n, a]) => a.leads ? null : n).filter(Boolean); if (nota.length) $("#cri-ruim").insertAdjacentHTML("beforeend", `<p class="def">Sem lead no período: ${nota.map(esc).join(", ")} (valor = investimento).</p>`);
+}
+
+/* ── Black ─────────────────────────────────────────────────────────── */
+function black() {
+  const B = CONFIG.black, ehBlack = r => r.black || /black/i.test(r.camp || "");
+  const M = mid(r => r.black), R = rd(ehBlack);
+  const doMes = MID.filter(r => r.black && r.d.startsWith(B.mes)), gastoMes = soma(doMes, "gasto");
+  const ontem = addDias(st.hoje, -1), ult3 = soma(doMes.filter(r => r.d >= addDias(st.hoje, -3) && r.d <= ontem), "gasto") / 3;
+  const restam = Math.max(0, Math.round((new Date(B.ate + "T12:00:00Z") - new Date(st.hoje + "T12:00:00Z")) / 864e5) + 1);
+  const proj = soma(doMes.filter(r => r.d <= ontem), "gasto") + ult3 * restam;
+  const lc = soma(R, "n"), q = soma(R.filter(r => r.q === "Sim"), "n"), inv = soma(M, "gasto");
+  $("#kpis-black").innerHTML = kpi("Investido na Black no mês", brl(gastoMes), "de " + brl(B.verba), true, 100 * gastoMes / B.verba)
+    + kpi("Ritmo atual", brl(ult3) + "/dia", "Projeção até " + fmtD(B.ate) + ": " + brl(proj))
+    + kpi("Leads nas plataformas", int(soma(M, "leads")), "No período filtrado")
+    + kpi("Leads no CRM", int(lc), "Formulários e campanhas da Black") + kpi("Qualificados no CRM", int(q), "Custo " + brl2(inv / q))
+    + kpi("Funil de vendas", int(soma(R.filter(r => r.vendas), "n")), int(soma(R.filter(r => r.avan), "n")) + " em etapa avançada");
+  $("#black-sub").textContent = `Acumulado de ${fmtD(B.mes + "-01")} a hoje contra ${brl(B.verba)}, com a projeção no ritmo dos últimos 3 dias.`;
+  const fim = B.ate, dias = []; for (let d = B.mes + "-01"; d <= fim; d = addDias(d, 1)) dias.push(d);
+  const pd = {}; for (const r of doMes) pd[r.d] = (pd[r.d] || 0) + r.gasto;
+  let acc = 0; const real = []; dias.forEach((d, i) => { if (d <= st.hoje) { acc += pd[d] || 0; real.push([i, acc]); } });
+  const proje = [real[real.length - 1] || [0, 0]]; let a2 = (real[real.length - 1] || [0, 0])[1]; dias.forEach((d, i) => { if (d > st.hoje) { a2 += ult3; proje.push([i, a2]); } });
+  const W = 560, H = 220, pl = 50, pb = 24, mx = Math.ceil(Math.max(B.verba, a2, acc) * 1.08 / 10000) * 10000, x = i => pl + i * (W - pl - 10) / (dias.length - 1), y = v => 8 + (H - 8 - pb) * (1 - v / mx);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Gasto acumulado da Black contra a verba do mês">`;
+  for (let k = 0; k <= 4; k++) { const v = mx * k / 4; s += `<line x1="${pl}" x2="${W - 10}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${(v / 1000).toLocaleString("pt-BR")} mil</text>`; }
+  s += `<line x1="${pl}" x2="${W - 10}" y1="${y(B.verba)}" y2="${y(B.verba)}" stroke="var(--crit)" stroke-dasharray="3 3"/><text x="${W - 12}" y="${y(B.verba) - 6}" text-anchor="end" font-size="11" fill="var(--crit-ink)">verba ${brl(B.verba)}</text>`;
+  if (real.length) { s += `<polygon fill="var(--area-top)" points="${x(real[0][0])},${y(0)} ${real.map(([i, v]) => x(i) + "," + y(v)).join(" ")} ${x(real[real.length - 1][0])},${y(0)}"/><polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${real.map(([i, v]) => x(i) + "," + y(v)).join(" ")}"/><circle cx="${x(real[real.length - 1][0])}" cy="${y(acc)}" r="4.5" fill="var(--accent)"/>`; }
+  if (proje.length > 1) s += `<polyline fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="5 4" points="${proje.map(([i, v]) => x(i) + "," + y(v)).join(" ")}"/>`;
+  [0, Math.floor(dias.length / 2), dias.length - 1].forEach((i, j) => s += `<text x="${x(i)}" y="${H - 7}" text-anchor="${["start", "middle", "end"][j]}" font-size="11" fill="var(--muted)">${fmtD(dias[i])}</text>`);
+  $("#black-ritmo").innerHTML = s + `</svg><div class="legend"><span><i style="background:var(--accent)"></i>Realizado</span><span><i style="background:var(--muted)"></i>Projeção no ritmo atual</span></div>`;
+  const P = {}; for (const r of M) { const p = P[r.produto] = P[r.produto] || { inv: 0, lp: 0, lc: 0, q: 0 }; p.inv += r.gasto; p.lp += r.leads; }
+  for (const r of R) { const p = P[r.produto] = P[r.produto] || { inv: 0, lp: 0, lc: 0, q: 0 }; p.lc += r.n; if (r.q === "Sim") p.q += r.n; }
+  const L = Object.entries(P).sort((a, b) => b[1].inv - a[1].inv);
+  $("#t-black").innerHTML = `<thead><tr><th>Produto</th><th>Investimento</th><th>Leads</th><th>Leads CRM</th><th>Qualificados CRM</th><th>Custo por qualificado</th></tr></thead><tbody>` + (L.length ? L.map(([n, p]) => `<tr><td>${esc(n)}</td><td>${brl(p.inv)}</td><td>${int(p.lp)}</td><td>${int(p.lc)}</td><td>${int(p.q)}</td><td>${brl2(p.inv / p.q)}</td></tr>`).join("") : `<tr><td colspan="6" class="vazio">Sem dados no período.</td></tr>`) + "</tbody>";
+}
+
+/* ── Eventos ───────────────────────────────────────────────────────── */
+function eventos() {
+  const iv = intervalo(), E = {};
+  const nomeEv = id => id.replace(/-?\d{4}-\d{2}-\d{2}$/, "").replace(/^lp-/, "").replace(/-/g, " ").replace(/^./, c => c.toUpperCase());
+  const dataEv = id => (id.match(/(\d{4}-\d{2}-\d{2})$/) || [])[1] || "";
+  for (const r of EV) { if (!naData(r.d, iv)) continue; const e = E[r.id] = E[r.id] || { id: r.id, insc: 0, prim: r.d }; e.insc += r.n; if (r.d < e.prim) e.prim = r.d; }
+  const GEN = /^(webinar|lp|evento|jantar|brunch|workshop|form|inscricao|contourline|innove|lumenis|cynosure|visbody|med)$/i;
+  const palavras = s => s.toLowerCase().replace(/\d{4}-\d{2}-\d{2}/g, "").split(/[^a-zà-ú0-9]+/).filter(w => w.length >= 4 && !GEN.test(w));
+  const L = Object.values(E).map(e => { const dt = dataEv(e.id), pe = palavras(e.id);
+      const camps = MID.filter(r => r.tipo === "Evento" && dt && r.camp.includes(dt) && pe.some(w => r.camp.toLowerCase().includes(w)));
+      return { ...e, dt, inv: soma(camps, "gasto"), inscMeta: soma(camps, "insc") }; })
+    .sort((a, b) => (b.dt || b.prim).localeCompare(a.dt || a.prim));
+  $("#t-ev").innerHTML = `<thead><tr><th>Data</th><th class="l">Evento</th><th>Inscritos (RD)</th><th>Investimento</th><th>Inscrições contadas pelo Meta</th><th>Custo por inscrito</th><th>Compareceram</th></tr></thead><tbody>`
+    + (L.length ? L.map(e => `<tr><td class="mono">${e.dt ? fmtD(e.dt) : "—"}</td><td class="l" title="${esc(e.id)}">${esc(nomeEv(e.id))}</td><td>${int(e.insc)}</td><td>${e.inv ? brl(e.inv) : '<span class="tag">orgânico</span>'}</td><td>${e.inv ? int(e.inscMeta) : "—"}</td><td>${e.inv ? brl2(e.inv / e.insc) : "—"}</td><td>—</td></tr>`).join("") : `<tr><td colspan="7" class="vazio">Nenhuma inscrição em evento no período.</td></tr>`) + "</tbody>";
+}
+
+/* ── Qualidade dos dados ───────────────────────────────────────────── */
+function dados() {
+  const M = mid(), R = rd(), fs = FRENTES.filter(f => st.f === "todas" || f === st.f);
+  $("#t-gap").innerHTML = `<thead><tr><th>Frente</th><th>Plataformas</th><th>CRM</th><th>Chegaram</th></tr></thead><tbody>` + fs.map(f => { const a = soma(M.filter(r => r.frente === f), "leads"), b = soma(R.filter(r => r.frente === f), "n"); return `<tr><td>${f}</td><td>${int(a)}</td><td>${int(b)}</td><td>${pct(b, a)} ${a >= 20 && b / a < .6 ? '<span class="tag warn">verificar</span>' : ""}</td></tr>`; }).join("") + "</tbody>";
+  barras("#origem", fs.map(f => { const L = R.filter(r => r.frente === f), t = soma(L, "n"), p = soma(L.filter(r => /pago/.test(r.origem)), "n"); return [f, t ? 100 * p / t : 0, COR[f]]; }), "var(--s6)", v => Math.round(v) + "% pagos");
+  const so = soma(R.filter(r => r.origem === "Sem origem"), "n"), t = soma(R, "n");
+  $("#origem").insertAdjacentHTML("beforeend", `<p class="def">${int(so)} de ${int(t)} leads (${pct(so, t)}) chegaram sem origem registrada: orgânico, direto ou origem perdida.</p>`);
+  const Q = [["Paciente", "Marcaram que querem fazer o procedimento"], ["Não é médico", "Linhas médicas (Med, Cynosure, Lumenis)"], ["Investimento R$ 0", "Informaram investimento de R$ 0"], ["Fora do perfil", "Estudante, secretária, entusiasta"], ["Sem resposta", "Não responderam às perguntas do formulário"]];
+  $("#fora").innerHTML = Q.map(([k, d]) => `<div class="kpi"><span class="lab">${k}</span><span class="val">${int(soma(R.filter(r => r.q === k), "n"))}</span><span class="note">${d}</span></div>`).join("");
+}
+
+function render() { mostrar(); resumo(); produtos(); comercial(); campanhas(); if (blackVisivel()) black(); eventos(); dados(); }
+iniciar();
+</script>
+</body>
+</html>

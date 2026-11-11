@@ -1,0 +1,79 @@
+name: Atualizar dados Contourline (Meta + Google + RD)
+
+on:
+  schedule:
+    - cron: "7 * * * *"      # de hora em hora (UTC)
+  workflow_dispatch:          # botão "Run workflow" manual
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Puxar Meta Ads (data.json)
+        continue-on-error: true
+        env:
+          META_TOKEN: ${{ secrets.META_TOKEN }}
+          AD_ACCOUNT_ID: ${{ vars.AD_ACCOUNT_ID }}
+          SINCE: ${{ vars.SINCE }}
+        run: node scripts/fetch-meta.mjs
+
+      - name: Puxar Google Ads (data-google.json)
+        continue-on-error: true
+        env:
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_DEVELOPER_TOKEN: ${{ secrets.GOOGLE_DEVELOPER_TOKEN }}
+          GOOGLE_SINCE: ${{ vars.SINCE }}
+        run: node scripts/fetch-google.mjs
+
+      # O RD guarda o que já leu (.cache/rd-state.json) no cache do Actions, nunca no repositório.
+      - name: Restaurar o que o RD já leu
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache
+          key: rd-state-${{ github.run_id }}
+          restore-keys: rd-state-
+
+      - name: Puxar RD Station (data-rd.json, só agregado)
+        continue-on-error: true
+        env:
+          RD_CLIENT_ID: ${{ secrets.RD_CLIENT_ID }}
+          RD_CLIENT_SECRET: ${{ secrets.RD_CLIENT_SECRET }}
+          RD_REFRESH_TOKEN: ${{ secrets.RD_REFRESH_TOKEN }}
+          RD_SINCE: ${{ vars.SINCE }}
+        run: node scripts/fetch-rd.mjs
+
+      - name: Guardar o que o RD leu
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .cache
+          key: rd-state-${{ github.run_id }}
+
+      - name: Commit se houver mudança
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          for f in data.json data-google.json data-rd.json; do [ -f "$f" ] && git add "$f"; done
+          if [ -n "$(git status --porcelain -- data.json data-google.json data-rd.json)" ]; then
+            git commit -m "chore: atualiza dados Contourline ($(date -u '+%Y-%m-%d %H:%M UTC'))"
+            git pull --rebase
+            git push
+          else
+            echo "Sem mudança nos dados."
+          fi
