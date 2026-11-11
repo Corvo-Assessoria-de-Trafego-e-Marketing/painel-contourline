@@ -140,6 +140,13 @@ const perdaNorm = s => !s ? "" : s.toUpperCase().replace("CADÊNCIA", "CADENCIA"
   }
   salvar();
 
+  // Enquanto a primeira leitura do histórico não termina, não substitui o arquivo publicado
+  // (senão o painel mostraria só parte dos leads). Segue lendo na próxima rodada.
+  if (st.varredura && existsSync(OUT)) {
+    console.log(`RD: leitura do histórico em andamento (página ${st.varredura.pagina}, ${Object.keys(st.contatos).length} contatos). data-rd.json mantido até terminar.`);
+    return;
+  }
+
   // C) agrega (sem dado pessoal)
   const leads = {}, eventos = {};
   const add = (o, k) => { o[k] = (o[k] || 0) + 1; };
