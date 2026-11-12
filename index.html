@@ -119,6 +119,7 @@ tr.prod td:first-child{padding-left:22px;color:var(--ink-2)}
 tr.click{cursor:pointer}
 tr.click:hover td{background:var(--accent-wash)}
 .mono{font-family:var(--font-mono);font-size:12px}
+.mono .utm{opacity:.65;font-size:11px}
 .bars{display:flex;flex-direction:column;gap:8px}
 .brow{display:grid;grid-template-columns:170px minmax(0,1fr) 130px;gap:10px;align-items:center;font-size:13px}
 .brow>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -206,7 +207,7 @@ footer .wrap{padding-block:0 30px;color:var(--muted);font-size:12px}
     <div class="head-row"><div><h2>Campanhas</h2><p class="sub">Resultado da plataforma ao lado do resultado no CRM. O CRM liga o lead à campanha pela UTM.</p></div>
       <div class="seg" role="group" aria-label="Plataforma da tabela"><button type="button" id="seg-meta" aria-pressed="true">Meta</button><button type="button" id="seg-google" aria-pressed="false">Google</button></div></div>
     <div class="tbl"><table id="t-camp"></table></div>
-    <p class="def">Leads no CRM por campanha só aparecem quando a UTM chega ao RD (Innove e Visbody desde 06/11). No Google, a maioria das campanhas não leva UTM com o nome da campanha.</p>
+    <p class="def">Leads no CRM por campanha só aparecem quando a UTM chega ao RD (Innove e Visbody desde 06/11). O lead é ligado à campanha pelo nome dela ou pela UTM escrita nos anúncios (mostrada embaixo do nome). UTM usada em mais de uma campanha (ex.: "black-innove" nas campanhas da Black no Google) não entra por campanha; esses leads aparecem na aba Black e nas frentes.</p>
   </div>
   <div class="grid c2">
     <div class="card"><h2>Anúncios com menor custo por lead</h2><p class="sub">Meta, mínimo de R$ 300 gastos no período. Custo pelo lead da plataforma.</p><div class="bars" id="cri-bom"></div></div>
@@ -271,9 +272,9 @@ async function carregar(url) { try { const r = await fetch(url + "?v=" + Date.no
 async function iniciar() {
   [META, GOO, RDM] = await Promise.all([carregar("data.json"), carregar("data-google.json"), carregar("data-rd.json")]);
   if (META) for (const r of META.rows) { const c = META.campanhas[r[1]], a = META.anuncios[r[2]];
-    MID.push({ d: r[0], plat: "meta", frente: a.frente, produto: a.produto, tipo: a.tipo, black: c.black, camp: c.nome, campAtiva: c.ativa, ad: a.nome, gasto: r[3], cliques: r[5], leads: c.tipo === "Evento" ? 0 : r[6], insc: r[7] }); }
+    MID.push({ d: r[0], plat: "meta", frente: a.frente, produto: a.produto, tipo: a.tipo, black: c.black, camp: c.nome, utm: c.utm || [], campAtiva: c.ativa, ad: a.nome, gasto: r[3], cliques: r[5], leads: c.tipo === "Evento" ? 0 : r[6], insc: r[7] }); }
   if (GOO) for (const r of GOO.rows) { const c = GOO.campanhas[r[1]];
-    MID.push({ d: r[0], plat: "google", frente: c.frente, produto: c.produto, tipo: c.tipo, black: c.black, camp: c.nome, campAtiva: c.ativa, ad: null, gasto: r[2], cliques: r[4], leads: r[5], insc: 0 }); }
+    MID.push({ d: r[0], plat: "google", frente: c.frente, produto: c.produto, tipo: c.tipo, black: c.black, camp: c.nome, utm: c.utm || [], campAtiva: c.ativa, ad: null, gasto: r[2], cliques: r[4], leads: r[5], insc: 0 }); }
   if (RDM) {
     for (const r of RDM.leads) RD.push({ d: r[0], frente: r[1], produto: r[2], black: !!r[3], origem: r[4], camp: r[5], q: r[6], etapa: r[7], crm: r[8], perda: r[9], dono: r[10], n: r[11],
       neg: /›/.test(r[8]), vendas: VENDAS.test(r[8]), avan: VENDAS.test(r[8]) && AVAN.test(r[8]) });
@@ -461,11 +462,14 @@ function comercial() {
 /* ── Campanhas ─────────────────────────────────────────────────────── */
 function campanhas() {
   const M = mid(r => r.plat === st.camp), R = rd(), C = {};
-  for (const r of M) { const c = C[r.camp] = C[r.camp] || { nome: r.camp, frente: r.frente, tipo: r.tipo, ativa: r.campAtiva, inv: 0, leads: 0, prods: new Set() }; c.inv += r.gasto; c.leads += r.leads; c.prods.add(r.produto); }
-  const crm = {}; for (const r of R) if (r.camp) { const k = r.camp.toLowerCase(); crm[k] = crm[k] || { lc: 0, q: 0 }; crm[k].lc += r.n; if (r.q === "Sim") crm[k].q += r.n; }
+  for (const r of M) { const c = C[r.camp] = C[r.camp] || { nome: r.camp, utm: r.utm, frente: r.frente, tipo: r.tipo, ativa: r.campAtiva, inv: 0, leads: 0, prods: new Set() }; c.inv += r.gasto; c.leads += r.leads; c.prods.add(r.produto); }
+  // Lead do CRM entra pela UTM: o nome da campanha ou a UTM escrita nos anúncios dela. Lead com origem paga do outro canal não conta.
+  const outro = st.camp === "meta" ? "Google pago" : "Meta pago";
+  const crm = {}; for (const r of R) if (r.camp && r.origem !== outro) { const k = r.camp.toLowerCase(); crm[k] = crm[k] || { lc: 0, q: 0 }; crm[k].lc += r.n; if (r.q === "Sim") crm[k].q += r.n; }
+  for (const c of Object.values(C)) { const x = { lc: 0, q: 0 }; for (const k of new Set([c.nome, ...c.utm].map(s => s.toLowerCase()))) if (crm[k]) { x.lc += crm[k].lc; x.q += crm[k].q; } c.crm = x; }
   const L = Object.values(C).filter(c => c.inv > 0).sort((a, b) => b.inv - a.inv);
   $("#t-camp").innerHTML = `<thead><tr><th>Campanha</th><th class="l">Frente</th><th class="l">Tipo</th><th>Investimento</th><th>Leads</th><th>Custo por lead</th><th>Leads CRM</th><th>Qualificados CRM</th><th>Custo por qualificado</th></tr></thead><tbody>`
-    + (L.length ? L.map(c => { const x = crm[c.nome.toLowerCase()] || { lc: 0, q: 0 }; return `<tr><td class="mono"><span class="dot${c.ativa ? "" : " off"}" title="${c.ativa ? "ativa" : "pausada"}"></span>${esc(c.nome)}</td><td class="l">${esc(c.frente)}</td><td class="l">${esc(c.tipo)}</td><td>${brl(c.inv)}</td><td>${int(c.leads)}</td><td>${brl2(c.inv / c.leads)}</td><td>${x.lc ? int(x.lc) : "—"}</td><td>${x.lc ? int(x.q) : "—"}</td><td>${x.q ? brl2(c.inv / x.q) : "—"}</td></tr>`; }).join("")
+    + (L.length ? L.map(c => { const x = c.crm; return `<tr><td class="mono"><span class="dot${c.ativa ? "" : " off"}" title="${c.ativa ? "ativa" : "pausada"}"></span>${esc(c.nome)}${c.utm.length ? `<br><small class="utm">UTM nos anúncios: ${esc(c.utm.join(", "))}</small>` : ""}</td><td class="l">${esc(c.frente)}</td><td class="l">${esc(c.tipo)}</td><td>${brl(c.inv)}</td><td>${int(c.leads)}</td><td>${brl2(c.inv / c.leads)}</td><td>${x.lc ? int(x.lc) : "—"}</td><td>${x.lc ? int(x.q) : "—"}</td><td>${x.q ? brl2(c.inv / x.q) : "—"}</td></tr>`; }).join("")
       : `<tr><td colspan="9" class="vazio">Nenhuma campanha ${st.camp === "meta" ? "do Meta" : "do Google"} com gasto para esse filtro no período.</td></tr>`) + "</tbody>";
   const A = {}; for (const r of mid(r => r.plat === "meta" && !["Alcance", "Impulsionamento", "Evento"].includes(r.tipo))) { const a = A[r.ad] = A[r.ad] || { inv: 0, leads: 0 }; a.inv += r.gasto; a.leads += r.leads; }
   const AL = Object.entries(A).filter(([, a]) => a.inv >= 300);

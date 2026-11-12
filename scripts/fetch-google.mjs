@@ -4,7 +4,7 @@
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { classificarMidia } from "./classificar.mjs";
+import { classificarMidia, utmCampanhas, apelidosUnicos } from "./classificar.mjs";
 
 const env = k => (process.env[k] || "").trim();
 const REFRESH = env("GOOGLE_REFRESH_TOKEN"), CLIENT = env("GOOGLE_CLIENT_ID"), SECRET = env("GOOGLE_CLIENT_SECRET"), DEV = env("GOOGLE_DEVELOPER_TOKEN");
@@ -61,6 +61,24 @@ async function gaql(q) {
     // [data, campanha, gasto, impressões, cliques, conversões]
     rows.push([x.segments.date, idx[id], Math.round(custo * 100) / 100, +x.metrics.impressions || 0, +x.metrics.clicks || 0, Math.round((+x.metrics.conversions || 0) * 100) / 100]);
   }
+  // UTM dos sufixos de URL (campanha, grupo, anúncio) e dos endereços finais: é o nome que chega ao CRM (ex.: "searchhipro med").
+  try {
+    const ids = campanhas.map(c => c.id).join(","), porCamp = {};
+    const junta = (id, ...t) => { for (const u of utmCampanhas(t.join(" "))) (porCamp[id] = porCamp[id] || new Set()).add(u); };
+    for (const x of await gaql(`SELECT campaign.id, campaign.final_url_suffix, campaign.tracking_url_template, ad_group.final_url_suffix, ad_group.tracking_url_template
+        FROM ad_group WHERE campaign.id IN (${ids}) AND ad_group.status != 'REMOVED'`))
+      junta(x.campaign.id, x.campaign.finalUrlSuffix, x.campaign.trackingUrlTemplate, x.adGroup?.finalUrlSuffix, x.adGroup?.trackingUrlTemplate);
+    for (const x of await gaql(`SELECT campaign.id, ad_group_ad.ad.final_urls, ad_group_ad.ad.final_url_suffix, ad_group_ad.ad.tracking_url_template
+        FROM ad_group_ad WHERE campaign.id IN (${ids}) AND ad_group_ad.status != 'REMOVED'`))
+      junta(x.campaign.id, ...(x.adGroupAd?.ad?.finalUrls || []), x.adGroupAd?.ad?.finalUrlSuffix, x.adGroupAd?.ad?.trackingUrlTemplate);
+    try {
+      for (const x of await gaql(`SELECT campaign.id, asset_group.final_urls FROM asset_group WHERE campaign.id IN (${ids}) AND asset_group.status != 'REMOVED'`))
+        junta(x.campaign.id, ...(x.assetGroup?.finalUrls || []));
+    } catch { }
+    const { out: ap, ambiguos } = apelidosUnicos(porCamp, Object.fromEntries(campanhas.map(c => [c.id, c.nome])));
+    for (const c of campanhas) if (ap[c.id]) c.utm = ap[c.id];
+    console.log(`UTM com outro nome: ${Object.keys(ap).length} campanhas${ambiguos.length ? " · ignoradas (em mais de uma campanha): " + ambiguos.join(", ") : ""}`);
+  } catch (e) { console.log("Aviso: não leu as UTMs do Google:", limpa(e.message)); }
   writeFileSync(OUT, JSON.stringify({ meta: { gerado: new Date().toISOString(), hoje: ate, desde: SINCE, conta: CUSTOMER, campos: ["data", "campanha", "gasto", "impressoes", "cliques", "conversoes"] }, campanhas, rows }));
   console.log(`OK: ${rows.length} linhas, ${campanhas.length} campanhas, R$ ${gasto.toFixed(2)}.`);
 })().catch(e => { console.error("ERRO Google:", limpa(e.message)); process.exit(1); });

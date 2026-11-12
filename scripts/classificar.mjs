@@ -101,3 +101,27 @@ export function classificarForm(id) {
   if (x) return { tipo: "produto", frente: black ? "Innove" : x.f, produto: x.p, black };
   return { tipo: "outros" };
 }
+
+// utm_campaign escritos à mão nos anúncios (sem {{macro}}), no mesmo formato que o fetch-rd lê da origem do lead:
+// decodificado, "+" vira espaço. Liga o lead do CRM à campanha quando a UTM não é o nome da campanha.
+export function utmCampanhas(texto) {
+  const out = new Set();
+  for (const m of String(texto || "").matchAll(/utm_campaign=([^&#"\s\\]*)/gi)) {
+    let v = m[1]; try { v = decodeURIComponent(v); } catch { }
+    v = v.replace(/\+/g, " ").trim();
+    if (v && !/[{}]|^\(?not set\)?$|^\(none\)$/i.test(v)) out.add(v.slice(0, 90));
+  }
+  return [...out];
+}
+
+// Apelidos por campanha, sem o que aparece em mais de uma campanha (ambíguo) e sem o próprio nome.
+export function apelidosUnicos(porCampanha, nomes) {
+  const dono = {};
+  for (const [id, set] of Object.entries(porCampanha)) for (const a of set) { const k = a.toLowerCase(); (dono[k] = dono[k] || new Set()).add(id); }
+  const out = {};
+  for (const [id, set] of Object.entries(porCampanha)) {
+    const l = [...set].filter(a => dono[a.toLowerCase()].size === 1 && a.toLowerCase() !== String(nomes[id] || "").toLowerCase());
+    if (l.length) out[id] = l;
+  }
+  return { out, ambiguos: Object.entries(dono).filter(([, s]) => s.size > 1).map(([k]) => k) };
+}

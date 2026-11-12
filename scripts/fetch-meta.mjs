@@ -3,7 +3,7 @@
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { classificarMidia } from "./classificar.mjs";
+import { classificarMidia, utmCampanhas, apelidosUnicos } from "./classificar.mjs";
 
 const TOKEN = (process.env.META_TOKEN || "").trim();
 const ACCOUNT = (process.env.AD_ACCOUNT_ID || "2342726552705025").replace(/^act_/, "").trim();
@@ -85,6 +85,22 @@ const pega = (A, lista) => { for (const k of lista) if (A[k] != null) return +A[
     // [data, campanha, anúncio, gasto, impressões, cliques no link, leads, inscrições]
     rows.push([x.date_start, idxC[x.campaign_id], idxA[x.ad_id], Math.round(spend * 100) / 100, +x.impressions || 0, +x.inline_link_clicks || 0, leads, insc]);
   }
+  // UTM escrita à mão nos anúncios (ex.: conv-ctl-hipro-leads-2026-05) vira apelido da campanha: o painel acha os leads do CRM por ela.
+  try {
+    const ids = dic.campanhas.map(c => c.id), porCamp = {};
+    for (let i = 0; i < ids.length; i += 50) {
+      const ads = await todos(`act_${ACCOUNT}/ads`, { fields: "campaign_id,creative{url_tags,object_story_spec,asset_feed_spec}", limit: "100",
+        filtering: JSON.stringify([{ field: "campaign.id", operator: "IN", value: ids.slice(i, i + 50) }]) });
+      for (const a of ads) {
+        const cr = a.creative || {};
+        for (const u of utmCampanhas([cr.url_tags, JSON.stringify(cr.object_story_spec || {}), JSON.stringify(cr.asset_feed_spec || {})].join(" ")))
+          (porCamp[a.campaign_id] = porCamp[a.campaign_id] || new Set()).add(u);
+      }
+    }
+    const { out: ap, ambiguos } = apelidosUnicos(porCamp, Object.fromEntries(dic.campanhas.map(c => [c.id, c.nome])));
+    for (const c of dic.campanhas) if (ap[c.id]) c.utm = ap[c.id];
+    console.log(`UTM com outro nome: ${Object.keys(ap).length} campanhas${ambiguos.length ? " · ignoradas (em mais de uma campanha): " + ambiguos.join(", ") : ""}`);
+  } catch (e) { console.log("Aviso: não leu as UTMs dos anúncios:", limpa(e.message)); }
   const out = { meta: { gerado: new Date().toISOString(), hoje: ate, desde: SINCE, conta: ACCOUNT, campos: ["data", "campanha", "anuncio", "gasto", "impressoes", "cliques", "leads", "inscricoes"] }, ...dic, rows };
   writeFileSync(OUT, JSON.stringify(out));
   const porFrente = {};
