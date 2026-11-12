@@ -100,18 +100,27 @@ const perdaNorm = s => !s ? "" : s.toUpperCase().replace("CADÊNCIA", "CADENCIA"
   const ini = new Date(SINCE + "T00:00:00-03:00");
 
   // A) contatos com conversão nova (varredura retomável)
-  if (!st.varredura) st.varredura = { pagina: 1, corte: st.ultimaVarreduraCompleta ? new Date(new Date(st.ultimaVarreduraCompleta).getTime() - 3 * 3600e3).toISOString() : ini.toISOString(), inicio: new Date().toISOString() };
+  // Uma vez por dia a varredura desce até o início do período (revisão): quem já está no cache é pulado sem chamada,
+  // então custa poucas chamadas, pega quem ficou para trás e tira do cache quem sumiu do RD (contato apagado/mesclado).
+  if (!st.varredura) {
+    const revisao = !st.ultimaRevisao || Date.now() - new Date(st.ultimaRevisao).getTime() > 20 * 3600e3;
+    st.varredura = { pagina: 1, revisao, vistos: [], inicio: new Date().toISOString(),
+      corte: !revisao && st.ultimaVarreduraCompleta ? new Date(new Date(st.ultimaVarreduraCompleta).getTime() - 3 * 3600e3).toISOString() : ini.toISOString() };
+  } else if (st.varredura.pagina > 1) st.varredura.pagina--; // retoma uma página antes: contato que sumiu entre rodadas não faz pular ninguém
   const corte = new Date(st.varredura.corte);
-  let novos = 0, fimVarredura = false;
+  const vistos = new Set(st.varredura.vistos || []);
+  let novos = 0, fimVarredura = false, chegouNoCorte = false, paginaInteira = true;
   while (tempo()) {
     const c = await get(`/platform/segmentations/${SEGMENTACAO}/contacts?page_size=125&page=${st.varredura.pagina}&order=last_conversion_date:desc`);
     const lista = (c && c.contacts) || [];
     if (!lista.length) { fimVarredura = true; break; }
+    paginaInteira = true;
     for (const x of lista) {
-      if (new Date(x.last_conversion_date) < corte) { fimVarredura = true; break; }
+      if (new Date(x.last_conversion_date) < corte) { fimVarredura = chegouNoCorte = true; break; }
       const k = x.uuid.slice(0, 13); const atual = st.contatos[k];
+      vistos.add(k);
       if (atual && atual.lc === x.last_conversion_date) continue;
-      if (!tempo()) break;
+      if (!tempo()) { paginaInteira = false; break; } // acabou o tempo no meio da página: a próxima rodada recomeça nela
       const ev = await get("/platform/contacts/" + x.uuid + "/events?event_type=CONVERSION") || [];
       const conv = (Array.isArray(ev) ? ev : []).filter(e => new Date(e.event_timestamp) >= ini)
         .map(e => [e.event_timestamp, e.event_identifier, ...origem(e.payload)]);
@@ -121,10 +130,20 @@ const perdaNorm = s => !s ? "" : s.toUpperCase().replace("CADÊNCIA", "CADENCIA"
         pipe: d.cf_plug_deal_pipeline || "", etapa: d.cf_plug_funnel_stage || "", perda: d.cf_plug_lost_reason || "", dono: d.cf_plug_contact_owner ? 1 : 0, dt: Date.now() };
       novos++;
     }
-    if (fimVarredura) break;
-    st.varredura.pagina++; salvar();
+    if (fimVarredura || !paginaInteira) break;
+    st.varredura.pagina++; st.varredura.vistos = [...vistos]; salvar();
   }
-  if (fimVarredura) { st.ultimaVarreduraCompleta = st.varredura.inicio; st.varredura = null; }
+  let removidos = 0;
+  if (fimVarredura) {
+    if (st.varredura.revisao && chegouNoCorte) {
+      // quem está no cache mas não apareceu na lista até o início do período saiu do RD
+      const fora = Object.keys(st.contatos).filter(k => !vistos.has(k));
+      if (fora.length <= 0.05 * Object.keys(st.contatos).length) { for (const k of fora) delete st.contatos[k]; removidos = fora.length; }
+      else console.log(`Aviso RD: ${fora.length} contatos do cache não apareceram na revisão; nada removido (limite de 5%).`);
+      st.ultimaRevisao = st.varredura.inicio;
+    }
+    st.ultimaVarreduraCompleta = st.varredura.inicio; st.varredura = null;
+  } else st.varredura.vistos = [...vistos];
   salvar();
 
   // B) atualiza etapa/motivo de perda de quem já está no cache (mais antigos primeiro)
@@ -174,5 +193,5 @@ const perdaNorm = s => !s ? "" : s.toUpperCase().replace("CADÊNCIA", "CADENCIA"
     leads: linhas(leads), eventos: linhas(eventos) };
   writeFileSync(OUT, JSON.stringify(out));
   const tot = out.leads.reduce((a, r) => a + r[11], 0);
-  console.log(`RD: ${novos} contatos novos, ${atualizados} atualizados, ${chamadas} chamadas em ${Math.round((Date.now() - T0) / 1000)} s. Varredura ${st.varredura ? "continua na próxima rodada (página " + st.varredura.pagina + ")" : "completa"}. Leads de produto no arquivo: ${tot}.`);
+  console.log(`RD: ${novos} contatos novos, ${atualizados} atualizados, ${chamadas} chamadas em ${Math.round((Date.now() - T0) / 1000)} s. Varredura ${st.varredura ? "continua na próxima rodada (página " + st.varredura.pagina + ")" : "completa"}${removidos ? `, ${removidos} saíram do RD` : ""}. Leads de produto no arquivo: ${tot}.`);
 })().catch(e => { console.error("ERRO RD:", limpa(e.message)); process.exit(1); });
