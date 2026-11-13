@@ -1,7 +1,12 @@
 // fetch-rd.mjs — RD Station Marketing da Contourline → ../data-rd.json (SÓ números agregados, sem nome/e-mail/telefone).
-// Guarda o que já leu em .cache/rd-state.json (fora do repositório; o GitHub Actions guarda entre as rodadas).
-// Env (secrets): RD_CLIENT_ID, RD_CLIENT_SECRET, RD_REFRESH_TOKEN. Opcionais: RD_SINCE, RD_MAX_CHAMADAS, RD_MAX_MIN.
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+// O que já leu (um registro por contato) fica:
+//   - no GitHub Actions: $RD_DIR/state.enc, criptografado com RD_STATE_KEY (AES-256-GCM, mesmo formato do painel da
+//     Exponential); o workflow guarda esse arquivo no ramo "rd-dados" (um commit só, sobrescrito a cada rodada);
+//   - rodando no PC sem RD_STATE_KEY: .cache/rd-state.json (fora do repositório).
+// Env (secrets): RD_CLIENT_ID, RD_CLIENT_SECRET, RD_REFRESH_TOKEN, RD_STATE_KEY (base64, 32 bytes).
+// Opcionais: RD_SINCE, RD_MAX_CHAMADAS, RD_MAX_MIN, RD_DIR.
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { classificarForm } from "./classificar.mjs";
@@ -14,6 +19,32 @@ const MAX_MS = +(env("RD_MAX_MIN") || 35) * 60e3;
 const SEGMENTACAO = env("RD_SEGMENTACAO") || "3533624"; // "todos os contatos" da conta
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CACHE_DIR = join(ROOT, ".cache"), CACHE = join(CACHE_DIR, "rd-state.json"), OUT = join(ROOT, "data-rd.json");
+const CHAVE = env("RD_STATE_KEY") ? Buffer.from(env("RD_STATE_KEY"), "base64") : null;
+const ESTADO_ENC = join(env("RD_DIR") || CACHE_DIR, "state.enc");
+
+// ── estado criptografado (iv 12 bytes | cifra | tag 16 bytes) ──
+function cifra(obj) {
+  const iv = randomBytes(12), c = createCipheriv("aes-256-gcm", CHAVE, iv);
+  return Buffer.concat([iv, c.update(JSON.stringify(obj)), c.final(), c.getAuthTag()]);
+}
+function decifra(buf) {
+  const iv = buf.subarray(0, 12), tag = buf.subarray(buf.length - 16), ct = buf.subarray(12, buf.length - 16);
+  const d = createDecipheriv("aes-256-gcm", CHAVE, iv); d.setAuthTag(tag);
+  return JSON.parse(Buffer.concat([d.update(ct), d.final()]).toString("utf8"));
+}
+function carregarEstado() {
+  if (CHAVE && existsSync(ESTADO_ENC)) {
+    try { return decifra(readFileSync(ESTADO_ENC)); } catch (e) { console.log("Aviso RD: estado criptografado ilegível; recomeçando a leitura (" + e.message + ")"); return null; }
+  }
+  // sem chave (PC) ou primeira rodada com chave: lê o arquivo antigo em texto, se houver (migração)
+  return existsSync(CACHE) ? JSON.parse(readFileSync(CACHE, "utf8")) : null;
+}
+function gravarEstado(st) {
+  if (!CHAVE) { writeFileSync(CACHE, JSON.stringify(st)); return; }
+  mkdirSync(dirname(ESTADO_ENC), { recursive: true });
+  const tmp = ESTADO_ENC + ".tmp"; writeFileSync(tmp, cifra(st)); renameSync(tmp, ESTADO_ENC);
+  if (existsSync(CACHE)) rmSync(CACHE); // com a chave, nada fica em texto
+}
 let TOK = null;
 const limpa = s => { let t = String(s); for (const x of [SEC, REF, TOK, CID]) if (x) t = t.split(x).join("***"); return t; };
 const espera = ms => new Promise(r => setTimeout(r, ms));
@@ -93,9 +124,10 @@ const perdaNorm = s => !s ? "" : s.toUpperCase().replace("CADÊNCIA", "CADENCIA"
 
 (async () => {
   if (!CID || !SEC || !REF) { console.log("Secrets do RD não configurados — pulando."); return; }
+  if (CHAVE && CHAVE.length !== 32) throw new Error("RD_STATE_KEY precisa ter 32 bytes em base64");
   if (!existsSync(CACHE_DIR)) mkdirSync(CACHE_DIR);
-  const st = existsSync(CACHE) ? JSON.parse(readFileSync(CACHE, "utf8")) : { contatos: {}, varredura: null, ultimaVarreduraCompleta: null };
-  const salvar = () => writeFileSync(CACHE, JSON.stringify(st));
+  const st = carregarEstado() || { contatos: {}, varredura: null, ultimaVarreduraCompleta: null };
+  const salvar = () => gravarEstado(st);
   await token();
   const ini = new Date(SINCE + "T00:00:00-03:00");
 

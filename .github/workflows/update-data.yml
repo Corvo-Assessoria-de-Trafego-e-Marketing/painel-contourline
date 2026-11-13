@@ -1,23 +1,36 @@
 name: Atualizar dados Contourline (Meta + Google + RD)
 
+# AGENDAMENTO CONFIÁVEL (mesmo desenho do painel da Exponential)
+# ---------------------------------------------------------------
+# O cron gratuito do GitHub atrasa e pula rodadas (na prática roda a cada ~6 a 8 h).
+# O gatilho workflow_dispatch dispara na hora. Então cada execução roda um LOOP
+# (atualiza a cada ~55 min por ~5 h) e, no fim, dispara a próxima com `gh workflow run`:
+# uma corrente que não depende do cron. O `schedule` fica só como rede de segurança,
+# para reerguer a corrente se ela cair. `cancel-in-progress: true` garante uma corrente só.
+#
+# RD: o que a leitura já fez (um registro por contato) fica criptografado (RD_STATE_KEY)
+# no ramo "rd-dados", num commit único sobrescrito a cada rodada. No main vai só o
+# data-rd.json, com números agregados.
+
 on:
   schedule:
-    - cron: "7 * * * *"      # de hora em hora (UTC)
-  workflow_dispatch:          # botão "Run workflow" manual
+    - cron: "17,47 * * * *"   # rede de segurança: reergue a corrente se ela cair
+  workflow_dispatch:          # gatilho confiável: usado pela própria corrente e à mão
 
-# Padrão Corvo (B5): nada por padrão; só o job que publica os dados pode gravar.
+# Padrão Corvo (B5): nada por padrão; o job abaixo pede só o necessário.
 permissions: {}
 
 concurrency:
   group: update-data
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 350        # ~5h50 (limite do runner é 6 h); no fim dispara a próxima
     permissions:
-      contents: write   # commit dos data*.json
+      contents: write           # commit dos data*.json e do ramo rd-dados
+      actions: write            # a corrente dispara a própria próxima execução
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -25,57 +38,78 @@ jobs:
         with:
           node-version: "22"   # Node 20 saiu de suporte em 30/04/2026
 
-      - name: Puxar Meta Ads (data.json)
-        continue-on-error: true
+      # Migração: só serve enquanto o ramo rd-dados não existe (traz o estado antigo, em texto,
+      # que o fetch-rd criptografa e apaga na primeira rodada). Depois o ramo é que vale.
+      - name: Estado antigo do RD (migração)
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .cache
+          key: rd-state-migracao-${{ github.run_id }}
+          restore-keys: rd-state-
+
+      - name: Loop de atualização (a cada ~55 min, por ~5 h)
         env:
           META_TOKEN: ${{ secrets.META_TOKEN }}
           AD_ACCOUNT_ID: ${{ vars.AD_ACCOUNT_ID }}
           SINCE: ${{ vars.SINCE }}
-        run: node scripts/fetch-meta.mjs
-
-      - name: Puxar Google Ads (data-google.json)
-        continue-on-error: true
-        env:
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_DEVELOPER_TOKEN: ${{ secrets.GOOGLE_DEVELOPER_TOKEN }}
           GOOGLE_SINCE: ${{ vars.SINCE }}
-        run: node scripts/fetch-google.mjs
-
-      # O RD guarda o que já leu (.cache/rd-state.json) no cache do Actions, nunca no repositório.
-      - name: Restaurar o que o RD já leu
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: .cache
-          key: rd-state-${{ github.run_id }}
-          restore-keys: rd-state-
-
-      - name: Puxar RD Station (data-rd.json, só agregado)
-        continue-on-error: true
-        env:
           RD_CLIENT_ID: ${{ secrets.RD_CLIENT_ID }}
           RD_CLIENT_SECRET: ${{ secrets.RD_CLIENT_SECRET }}
           RD_REFRESH_TOKEN: ${{ secrets.RD_REFRESH_TOKEN }}
+          RD_STATE_KEY: ${{ secrets.RD_STATE_KEY }}
           RD_SINCE: ${{ vars.SINCE }}
-        run: node scripts/fetch-rd.mjs
-
-      - name: Guardar o que o RD leu
-        if: always()
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: .cache
-          key: rd-state-${{ github.run_id }}
-
-      - name: Commit se houver mudança
+          RD_MAX_MIN: "20"
+          RD_DIR: ${{ runner.temp }}/rd-dados
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          for f in data.json data-google.json data-rd.json; do [ -f "$f" ] && git add "$f"; done
-          if [ -n "$(git status --porcelain -- data.json data-google.json data-rd.json)" ]; then
-            git commit -m "chore: atualiza dados Contourline ($(date -u '+%Y-%m-%d %H:%M UTC'))"
-            git pull --rebase
-            git push
-          else
-            echo "Sem mudança nos dados."
-          fi
+          # estado criptografado do RD: baixa uma vez; nas rodadas seguintes vale a cópia local (mais nova)
+          mkdir -p "$RD_DIR"
+          if git fetch -q origin rd-dados 2>/dev/null; then git show FETCH_HEAD:state.enc > "$RD_DIR/state.enc" 2>/dev/null || rm -f "$RD_DIR/state.enc"; fi
+          for i in $(seq 1 6); do
+            t0=$(date +%s)
+            echo "::group::Rodada $i - $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git fetch -q origin main
+            git reset -q --hard origin/main        # parte do que está publicado (sem conflito)
+            node scripts/fetch-meta.mjs   || echo "AVISO: Meta falhou nesta rodada (segue)"
+            node scripts/fetch-google.mjs || echo "AVISO: Google falhou nesta rodada (segue)"
+            if node scripts/fetch-rd.mjs; then
+              if [ -s "$RD_DIR/state.enc" ]; then
+                B=$(git hash-object -w "$RD_DIR/state.enc")
+                TREE=$(printf "100644 blob %s\tstate.enc\n" "$B" | git mktree)
+                C=$(git commit-tree "$TREE" -m "estado RD $(date -u '+%Y-%m-%d %H:%M UTC')")
+                git push -f -q origin "$C:refs/heads/rd-dados" || echo "AVISO: não gravou o ramo rd-dados"
+              fi
+            else
+              echo "AVISO: RD falhou nesta rodada (segue)"
+              git checkout -- data-rd.json 2>/dev/null || true
+            fi
+            for f in data.json data-google.json data-rd.json; do [ -f "$f" ] && git add "$f"; done
+            if [ -n "$(git status --porcelain -- data.json data-google.json data-rd.json)" ]; then
+              git commit -q -m "chore: atualiza dados Contourline ($(date -u '+%Y-%m-%d %H:%M UTC'))"
+              git push -q || echo "AVISO: push falhou (a próxima rodada recomeça do publicado)"
+            else
+              echo "Sem mudança nos dados."
+            fi
+            echo "::endgroup::"
+            resto=$(( 3300 - ($(date +%s) - t0) ))
+            if [ "$i" -lt 6 ] && [ "$resto" -gt 0 ]; then sleep "$resto"; fi
+          done
+
+      - name: Disparar a próxima execução (corrente)
+        # success(), não always(): disparar depois de um cancelamento criaria uma tempestade
+        # de cancela/dispara com cancel-in-progress. Se a corrente cair, o schedule a reergue.
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sleep 15
+          for t in 1 2 3; do
+            gh workflow run update-data.yml -R "${{ github.repository }}" --ref main && exit 0
+            echo "Não disparou (tentativa $t); aguardando..."; sleep 20
+          done
+          echo "ERRO: não consegui disparar a próxima; o schedule de segurança assume."

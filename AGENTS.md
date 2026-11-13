@@ -40,8 +40,13 @@ a fonte fica no segundo cérebro, em `docs/SEGURANCA.md`). O essencial:
 - **RD Station:** `data-rd.json` leva só números agregados (data, frente, produto,
   origem, campanha, qualificação, etapa e contagem). Nome, e-mail, telefone,
   empresa e o identificador do contato nunca entram no arquivo, no log nem no
-  repositório. O que a leitura do RD já fez fica em `.cache/` (fora do Git), no
-  cache do Actions.
+  repositório. O que a leitura do RD já fez (um registro por contato) fica
+  criptografado com `RD_STATE_KEY` no ramo `rd-dados` (`state.enc`, um commit só,
+  sobrescrito a cada rodada); no PC, sem a chave, fica em `.cache/` (fora do Git).
+- **Atualização em corrente:** o `update-data.yml` roda ~5 h atualizando a cada
+  ~55 min e dispara a próxima execução sozinho; o `schedule` só reergue a
+  corrente se ela cair. Não troque para `cancel-in-progress: false` nem tire o
+  `if: success()` do disparo.
 - O workflow `update-data.yml` roda com os secrets do Meta, do Google e do RD.
   Nunca imprima token no log; permissões mínimas e actions fixadas por SHA.
   Os tokens devem ser só de leitura e só desta conta.
