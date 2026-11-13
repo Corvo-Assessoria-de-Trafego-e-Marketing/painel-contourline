@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Painel Contourline</title>
@@ -137,6 +137,17 @@ svg text{font-family:var(--font-ui)}
 .alert.crit{background:var(--crit-wash)}
 .alert.crit b{color:var(--crit-ink)}
 .vazio{color:var(--muted);font-size:13px;padding:8px 0}
+.btn{appearance:none;border:1px solid var(--border-2);background:var(--surface);color:var(--ink);font:600 12.5px var(--font-ui);padding:6px 12px;border-radius:8px;cursor:pointer}
+.btn:hover{background:var(--surface-2)}.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.lista-acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.lista-acoes input{font:500 13px var(--font-ui);color:var(--ink);background:var(--surface-2);border:1px solid var(--border-2);border-radius:8px;padding:6px 10px;min-width:220px;max-width:100%}
+#t-lista td.l,#t-lista th.l{text-align:left}#t-lista .mail{display:block;color:var(--ink-2);font-size:12px}
+.lockbg{position:fixed;inset:0;background:rgba(10,12,16,.55);display:grid;place-items:center;z-index:50;padding:16px}
+.lockdlg{background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:20px;max-width:380px;width:100%}
+.lockdlg h3{font:600 18px var(--font-display);margin:0 0 6px}.lockdlg p{font-size:13px;color:var(--ink-2);margin:0 0 12px}
+.lockdlg input[type=password]{width:100%;box-sizing:border-box;font:500 14px var(--font-ui);color:var(--ink);background:var(--surface-2);border:1px solid var(--border-2);border-radius:8px;padding:8px 10px}
+.lockrem{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--ink-2);margin:10px 0 0}
+.lockerr{color:var(--crit-ink);font-size:12.5px;min-height:18px;margin-top:8px}.lockbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
 .def{font-size:12.5px;color:var(--ink-2);border-left:3px solid var(--border-2);padding:2px 0 2px 10px;margin:10px 0 0}
 .seg{display:inline-flex;border:1px solid var(--border-2);border-radius:9px;overflow:hidden}
 .seg button{appearance:none;border:0;background:var(--surface);color:var(--ink-2);font:600 12.5px var(--font-ui);padding:6px 12px;cursor:pointer}
@@ -202,6 +213,11 @@ footer .wrap{padding-block:0 30px;color:var(--muted);font-size:12px}
     <div class="card"><h2>Motivos de perda</h2><p class="sub">Campo de motivo de perda do CRM.</p><div class="bars" id="perdas"></div></div>
   </div>
   <div class="card"><h2>Etapas do CRM por frente</h2><p class="sub">Onde os leads do período estão agora.</p><div class="tbl"><table id="t-etapas"></table></div></div>
+  <div class="card">
+    <div class="head-row"><div><h2>Lista de leads</h2><p class="sub">Um lead por frente, com origem, qualificação e etapa no CRM. Segue os filtros de período, frente, produto e plataforma.</p></div><div class="lista-acoes" id="lista-acoes"></div></div>
+    <div id="lista-corpo"></div>
+    <p class="def">Nome e e-mail ficam criptografados e só abrem com a senha que a Corvo passou para o time. O arquivo público do painel não tem dado pessoal.</p>
+  </div>
 </section>
 
 <section data-view="campanhas" hidden>
@@ -283,7 +299,7 @@ async function iniciar() {
     for (const r of RDM.eventos) EV.push({ d: r[0], id: r[1], origem: r[2], camp: r[3], n: r[4] });
   }
   st.hoje = (META && META.meta.hoje) || (GOO && GOO.meta.hoje) || new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
-  carimbo(); montarControles(); addEventListener("hashchange", render); render();
+  carimbo(); montarControles(); addEventListener("hashchange", render); render(); senhaGuardada();
 }
 function carimbo() {
   const h = iso => iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
@@ -542,7 +558,77 @@ function dados() {
   $("#fora").innerHTML = Q.map(([k, d]) => `<div class="kpi"><span class="lab">${k}</span><span class="val">${int(soma(R.filter(r => r.q === k), "n"))}</span><span class="note">${d}</span></div>`).join("");
 }
 
-function render() { mostrar(); resumo(); produtos(); comercial(); campanhas(); if (blackVisivel()) black(); eventos(); dados(); }
+/* ── Lista de leads (nome e e-mail criptografados com a senha do painel, no ramo rd-dados) ── */
+const LISTA_URL = "https://raw.githubusercontent.com/Corvo-Assessoria-de-Trafego-e-Marketing/painel-contourline/rd-dados/leads.enc";
+const SENHA_KEY = "painel_ctl_senha", LISTA_MAX = 500;
+let LISTA = null, LISTA_BUSCA = "";
+async function abrirLista(pw, lembrar) {
+  const r = await fetch(LISTA_URL + "?v=" + Date.now(), { cache: "no-store" });
+  if (r.status === 404) throw new Error("sem-lista");
+  if (!r.ok) throw new Error("rede");
+  const j = await r.json(), b64 = x => Uint8Array.from(atob(x), c => c.charCodeAt(0));
+  const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: b64(j.s), iterations: j.it, hash: "SHA-256" }, km, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  let pt; try { pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(j.iv) }, key, b64(j.ct)); } catch { throw new Error("senha"); }
+  const o = JSON.parse(new TextDecoder().decode(pt));
+  LISTA = o.leads.map(r => ({ d: r[0], frente: r[1], produto: r[2], black: !!r[3], origem: r[4], camp: r[5], q: r[6], etapa: r[7], crm: r[8], perda: r[9], nome: r[11], email: r[12] }));
+  try { (lembrar ? localStorage : sessionStorage).setItem(SENHA_KEY, pw); } catch { }
+}
+function bloquearLista() { LISTA = null; LISTA_BUSCA = ""; try { localStorage.removeItem(SENHA_KEY); sessionStorage.removeItem(SENHA_KEY); } catch { } lista(); }
+function dialogoSenha() {
+  const d = document.createElement("div"); d.className = "lockbg";
+  d.innerHTML = `<form class="lockdlg" role="dialog" aria-modal="true" aria-labelledby="lockT">
+    <h3 id="lockT">Ver nomes e e-mails dos leads</h3>
+    <p>A lista é protegida porque o painel abre para quem tem o link. Digite a senha que a Corvo passou para o time.</p>
+    <input type="password" id="lockPw" autocomplete="current-password" placeholder="Senha" required aria-label="Senha">
+    <label class="lockrem"><input type="checkbox" id="lockRem"> Lembrar neste aparelho</label>
+    <div class="lockerr" id="lockErr" role="alert"></div>
+    <div class="lockbtns"><button type="button" class="btn" id="lockNo">Cancelar</button><button type="submit" class="btn pri" id="lockGo">Abrir</button></div></form>`;
+  document.body.appendChild(d);
+  const pw = d.querySelector("#lockPw"), fechar = () => d.remove(); pw.focus();
+  d.querySelector("#lockNo").onclick = fechar; d.onclick = e => { if (e.target === d) fechar(); };
+  d.addEventListener("keydown", e => { if (e.key === "Escape") fechar(); });
+  d.querySelector("form").onsubmit = async e => {
+    e.preventDefault(); const b = d.querySelector("#lockGo"); b.disabled = true; b.textContent = "Abrindo…";
+    try { await abrirLista(pw.value, d.querySelector("#lockRem").checked); fechar(); lista(); }
+    catch (err) {
+      d.querySelector("#lockErr").textContent = err.message === "senha" ? "Senha incorreta." : err.message === "sem-lista" ? "A lista ainda não foi gerada. Fale com a Corvo." : "Não consegui baixar a lista agora. Tente de novo em instantes.";
+      b.disabled = false; b.textContent = "Abrir";
+    }
+  };
+}
+function listaFiltrada() {
+  const iv = intervalo(), t = LISTA_BUSCA.trim().toLowerCase();
+  return LISTA.filter(r => naData(r.d, iv) && okFP(r) && (st.plat === "todas" || (st.plat === "meta" ? r.origem === "Meta pago" : r.origem === "Google pago"))
+    && (!t || (r.nome + " " + r.email + " " + r.camp + " " + r.produto).toLowerCase().includes(t)));
+}
+function listaCorpo() {
+  const L = listaFiltrada(), V = L.slice(0, LISTA_MAX);
+  $("#lista-corpo").innerHTML = !L.length ? `<p class="vazio">Nenhum lead para esse filtro no período.</p>`
+    : `<div class="tbl"><table id="t-lista"><thead><tr><th class="l">Data</th><th class="l">Lead</th><th class="l">Frente · produto</th><th class="l">Origem</th><th class="l">Qualificação</th><th class="l">Etapa no CRM</th><th class="l">Motivo de perda</th></tr></thead><tbody>`
+      + V.map(r => `<tr><td class="l mono">${fmtD(r.d)}</td><td class="l"><b>${esc(r.nome || "(nome ainda não carregado)")}</b><span class="mail">${esc(r.email)}</span></td><td class="l">${esc(r.frente)} · ${esc(r.produto)}</td><td class="l">${esc(r.camp || r.origem)}</td><td class="l">${r.q === "Sim" ? '<span class="tag good">qualificado</span>' : esc(r.q)}</td><td class="l">${esc(r.crm || r.etapa)}</td><td class="l">${esc(r.perda ? r.perda.toLowerCase() : "")}</td></tr>`).join("")
+      + `</tbody></table></div>` + (L.length > LISTA_MAX ? `<p class="vazio">Mostrando os ${int(LISTA_MAX)} mais recentes de ${int(L.length)}. Use a busca ou os filtros para achar os demais.</p>` : `<p class="vazio">${int(L.length)} leads.</p>`);
+}
+function lista() {
+  if (!LISTA) {
+    $("#lista-acoes").innerHTML = `<button type="button" class="btn pri" id="lista-abrir">Ver nomes e e-mails</button>`;
+    $("#lista-corpo").innerHTML = `<p class="vazio">Protegida por senha.</p>`;
+    $("#lista-abrir").onclick = dialogoSenha; return;
+  }
+  if (!$("#lista-busca")) {
+    $("#lista-acoes").innerHTML = `<input type="search" id="lista-busca" placeholder="Buscar nome, e-mail ou campanha" aria-label="Buscar na lista"><button type="button" class="btn" id="lista-fechar">Bloquear</button>`;
+    $("#lista-busca").oninput = e => { LISTA_BUSCA = e.target.value; listaCorpo(); };
+    $("#lista-fechar").onclick = bloquearLista;
+  }
+  listaCorpo();
+}
+function senhaGuardada() {
+  let pw = null, lembrar = false;
+  try { pw = localStorage.getItem(SENHA_KEY); lembrar = !!pw; pw = pw || sessionStorage.getItem(SENHA_KEY); } catch { }
+  if (pw) abrirLista(pw, lembrar).then(lista).catch(() => { try { localStorage.removeItem(SENHA_KEY); sessionStorage.removeItem(SENHA_KEY); } catch { } });
+}
+
+function render() { mostrar(); resumo(); produtos(); comercial(); lista(); campanhas(); if (blackVisivel()) black(); eventos(); dados(); }
 iniciar();
 </script>
 </body>

@@ -61,6 +61,7 @@ jobs:
           RD_CLIENT_SECRET: ${{ secrets.RD_CLIENT_SECRET }}
           RD_REFRESH_TOKEN: ${{ secrets.RD_REFRESH_TOKEN }}
           RD_STATE_KEY: ${{ secrets.RD_STATE_KEY }}
+          PAINEL_SENHA: ${{ secrets.PAINEL_SENHA }}   # lista de leads criptografada; sem a senha a lista não é gerada
           RD_SINCE: ${{ vars.SINCE }}
           RD_MAX_MIN: "20"
           RD_DIR: ${{ runner.temp }}/rd-dados
@@ -69,7 +70,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # estado criptografado do RD: baixa uma vez; nas rodadas seguintes vale a cópia local (mais nova)
           mkdir -p "$RD_DIR"
-          if git fetch -q origin rd-dados 2>/dev/null; then git show FETCH_HEAD:state.enc > "$RD_DIR/state.enc" 2>/dev/null || rm -f "$RD_DIR/state.enc"; fi
+          if git fetch -q origin rd-dados 2>/dev/null; then
+            git show FETCH_HEAD:state.enc > "$RD_DIR/state.enc" 2>/dev/null || rm -f "$RD_DIR/state.enc"
+            git show FETCH_HEAD:leads.enc > "$RD_DIR/leads.enc" 2>/dev/null || rm -f "$RD_DIR/leads.enc"
+          fi
           for i in $(seq 1 6); do
             t0=$(date +%s)
             echo "::group::Rodada $i - $(date -u '+%Y-%m-%d %H:%M UTC')"
@@ -80,7 +84,12 @@ jobs:
             if node scripts/fetch-rd.mjs; then
               if [ -s "$RD_DIR/state.enc" ]; then
                 B=$(git hash-object -w "$RD_DIR/state.enc")
-                TREE=$(printf "100644 blob %s\tstate.enc\n" "$B" | git mktree)
+                if [ -s "$RD_DIR/leads.enc" ]; then
+                  L=$(git hash-object -w "$RD_DIR/leads.enc")
+                  TREE=$(printf "100644 blob %s\tleads.enc\n100644 blob %s\tstate.enc\n" "$L" "$B" | git mktree)
+                else
+                  TREE=$(printf "100644 blob %s\tstate.enc\n" "$B" | git mktree)
+                fi
                 C=$(git commit-tree "$TREE" -m "estado RD $(date -u '+%Y-%m-%d %H:%M UTC')")
                 git push -f -q origin "$C:refs/heads/rd-dados" || echo "AVISO: não gravou o ramo rd-dados"
               fi

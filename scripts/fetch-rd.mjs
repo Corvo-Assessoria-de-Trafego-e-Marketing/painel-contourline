@@ -3,10 +3,13 @@
 //   - no GitHub Actions: $RD_DIR/state.enc, criptografado com RD_STATE_KEY (AES-256-GCM, mesmo formato do painel da
 //     Exponential); o workflow guarda esse arquivo no ramo "rd-dados" (um commit só, sobrescrito a cada rodada);
 //   - rodando no PC sem RD_STATE_KEY: .cache/rd-state.json (fora do repositório).
-// Env (secrets): RD_CLIENT_ID, RD_CLIENT_SECRET, RD_REFRESH_TOKEN, RD_STATE_KEY (base64, 32 bytes).
+// Lista de leads (nome e e-mail): só com RD_STATE_KEY e PAINEL_SENHA. Vai para $RD_DIR/leads.enc, criptografada com a
+// senha do painel (PBKDF2-SHA256 → AES-256-GCM, formato do painel da Exponential), também no ramo "rd-dados".
+// Sem a chave, nome e e-mail nem são guardados.
+// Env (secrets): RD_CLIENT_ID, RD_CLIENT_SECRET, RD_REFRESH_TOKEN, RD_STATE_KEY (base64, 32 bytes), PAINEL_SENHA.
 // Opcionais: RD_SINCE, RD_MAX_CHAMADAS, RD_MAX_MIN, RD_DIR.
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes, pbkdf2Sync } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { classificarForm } from "./classificar.mjs";
@@ -21,6 +24,19 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CACHE_DIR = join(ROOT, ".cache"), CACHE = join(CACHE_DIR, "rd-state.json"), OUT = join(ROOT, "data-rd.json");
 const CHAVE = env("RD_STATE_KEY") ? Buffer.from(env("RD_STATE_KEY"), "base64") : null;
 const ESTADO_ENC = join(env("RD_DIR") || CACHE_DIR, "state.enc");
+const SENHA = CHAVE ? env("PAINEL_SENHA") : ""; // sem a chave do estado, nome e e-mail não são guardados
+const LISTA_ENC = join(env("RD_DIR") || CACHE_DIR, "leads.enc");
+// nome e e-mail só entram no estado quando ele é criptografado
+const pessoais = d => CHAVE ? { n: String(d.name || "").slice(0, 120), e: String(d.email || "").slice(0, 160) } : {};
+
+// ── lista para o navegador: PBKDF2-SHA256 → AES-256-GCM; ct = cifra || tag (o WebCrypto lê assim) ──
+const PBKDF2_IT = 310000;
+function cifraParaNavegador(obj) {
+  const sal = randomBytes(16), iv = randomBytes(12), chave = pbkdf2Sync(SENHA, sal, PBKDF2_IT, 32, "sha256");
+  const c = createCipheriv("aes-256-gcm", chave, iv);
+  const ct = Buffer.concat([c.update(JSON.stringify(obj)), c.final(), c.getAuthTag()]);
+  return JSON.stringify({ v: 1, it: PBKDF2_IT, s: sal.toString("base64"), iv: iv.toString("base64"), ct: ct.toString("base64") });
+}
 
 // ── estado criptografado (iv 12 bytes | cifra | tag 16 bytes) ──
 function cifra(obj) {
@@ -46,7 +62,7 @@ function gravarEstado(st) {
   if (existsSync(CACHE)) rmSync(CACHE); // com a chave, nada fica em texto
 }
 let TOK = null;
-const limpa = s => { let t = String(s); for (const x of [SEC, REF, TOK, CID]) if (x) t = t.split(x).join("***"); return t; };
+const limpa = s => { let t = String(s); for (const x of [SEC, REF, TOK, CID, SENHA]) if (x) t = t.split(x).join("***"); return t; };
 const espera = ms => new Promise(r => setTimeout(r, ms));
 const T0 = Date.now(); let chamadas = 0;
 const tempo = () => Date.now() - T0 < MAX_MS && chamadas < MAX_CHAMADAS;
@@ -159,7 +175,7 @@ const perdaNorm = s => !s ? "" : s.toUpperCase().replace("CADÊNCIA", "CADENCIA"
       if (!conv.length) { st.contatos[k] = { lc: x.last_conversion_date, c: [], u: x.uuid }; continue; }
       const d = await get("/platform/contacts/uuid:" + x.uuid) || {};
       st.contatos[k] = { u: x.uuid, lc: x.last_conversion_date, c: conv, quer: d.cf_eu_quero || "", invest: d.cf_investimento || "", prof: d.cf_qual_a_sua_profissaoo || "",
-        pipe: d.cf_plug_deal_pipeline || "", etapa: d.cf_plug_funnel_stage || "", perda: d.cf_plug_lost_reason || "", dono: d.cf_plug_contact_owner ? 1 : 0, dt: Date.now() };
+        pipe: d.cf_plug_deal_pipeline || "", etapa: d.cf_plug_funnel_stage || "", perda: d.cf_plug_lost_reason || "", dono: d.cf_plug_contact_owner ? 1 : 0, dt: Date.now(), ...pessoais(d) };
       novos++;
     }
     if (fimVarredura || !paginaInteira) break;
@@ -178,14 +194,16 @@ const perdaNorm = s => !s ? "" : s.toUpperCase().replace("CADÊNCIA", "CADENCIA"
   } else st.varredura.vistos = [...vistos];
   salvar();
 
-  // B) atualiza etapa/motivo de perda de quem já está no cache (mais antigos primeiro)
-  const vencidos = Object.entries(st.contatos).filter(([, v]) => v.c.length && Date.now() - (v.dt || 0) > 20 * 3600e3).sort((a, b) => (a[1].dt || 0) - (b[1].dt || 0));
+  // B) atualiza etapa/motivo de perda de quem já está no cache (primeiro quem ainda não tem nome e e-mail, depois os mais antigos)
+  const semNome = v => CHAVE && v.n === undefined;
+  const vencidos = Object.entries(st.contatos).filter(([, v]) => v.c.length && (semNome(v) || Date.now() - (v.dt || 0) > 20 * 3600e3))
+    .sort((a, b) => (semNome(b[1]) - semNome(a[1])) || (a[1].dt || 0) - (b[1].dt || 0));
   let atualizados = 0;
   for (const [k, v] of vencidos) {
     if (!tempo()) break;
     const d = await get("/platform/contacts/uuid:" + v.u);
     if (d) Object.assign(v, { pipe: d.cf_plug_deal_pipeline || "", etapa: d.cf_plug_funnel_stage || "", perda: d.cf_plug_lost_reason || "", dono: d.cf_plug_contact_owner ? 1 : 0,
-      quer: d.cf_eu_quero || v.quer, invest: d.cf_investimento || v.invest, prof: d.cf_qual_a_sua_profissaoo || v.prof });
+      quer: d.cf_eu_quero || v.quer, invest: d.cf_investimento || v.invest, prof: d.cf_qual_a_sua_profissaoo || v.prof, ...pessoais(d) });
     v.dt = Date.now(); atualizados++;
     if (atualizados % 100 === 0) salvar();
   }
@@ -198,8 +216,8 @@ const perdaNorm = s => !s ? "" : s.toUpperCase().replace("CADÊNCIA", "CADENCIA"
     return;
   }
 
-  // C) agrega (sem dado pessoal)
-  const leads = {}, eventos = {};
+  // C) agrega (sem dado pessoal) e, com a senha do painel, monta a lista de leads criptografada
+  const leads = {}, eventos = {}, lista = [];
   const add = (o, k) => { o[k] = (o[k] || 0) + 1; };
   for (const v of Object.values(st.contatos)) {
     if (!v.c.length) continue;
@@ -212,7 +230,9 @@ const perdaNorm = s => !s ? "" : s.toUpperCase().replace("CADÊNCIA", "CADENCIA"
         vistoFrente[f.frente] = 1;
         const q = qualifica(v, f.frente);
         // [data, frente, produto, black, origem, campanha, qualificação, etapa, etapa do CRM, motivo de perda, tem dono]
-        add(leads, JSON.stringify([dia, f.frente, f.produto, f.black ? 1 : 0, orig, camp, q, etapa(v), (v.pipe ? v.pipe + " › " : "") + (v.etapa || ""), perdaNorm(v.perda), v.dono]));
+        const linha = [dia, f.frente, f.produto, f.black ? 1 : 0, orig, camp, q, etapa(v), (v.pipe ? v.pipe + " › " : "") + (v.etapa || ""), perdaNorm(v.perda), v.dono];
+        add(leads, JSON.stringify(linha));
+        if (SENHA) lista.push([...linha, v.n || "", v.e || ""]);
       } else if (f.tipo === "evento" && !vistoEvento[id]) {
         vistoEvento[id] = 1;
         add(eventos, JSON.stringify([dia, id, orig, camp]));
@@ -224,6 +244,11 @@ const perdaNorm = s => !s ? "" : s.toUpperCase().replace("CADÊNCIA", "CADENCIA"
       campos_leads: ["data", "frente", "produto", "black", "origem", "campanha", "qualificacao", "etapa", "etapa_crm", "perda", "dono", "n"], campos_eventos: ["data", "evento", "origem", "campanha", "n"] },
     leads: linhas(leads), eventos: linhas(eventos) };
   writeFileSync(OUT, JSON.stringify(out));
+  if (SENHA) {
+    // lista com nome e e-mail: só sai criptografada com a senha do painel (o navegador abre com a mesma senha)
+    lista.sort((a, b) => a[0] < b[0] ? 1 : -1);
+    writeFileSync(LISTA_ENC, cifraParaNavegador({ gerado: out.meta.gerado, campos: [...out.meta.campos_leads.slice(0, 11), "nome", "email"], leads: lista }));
+  }
   const tot = out.leads.reduce((a, r) => a + r[11], 0);
   console.log(`RD: ${novos} contatos novos, ${atualizados} atualizados, ${chamadas} chamadas em ${Math.round((Date.now() - T0) / 1000)} s. Varredura ${st.varredura ? "continua na próxima rodada (página " + st.varredura.pagina + ")" : "completa"}${removidos ? `, ${removidos} saíram do RD` : ""}. Leads de produto no arquivo: ${tot}.`);
 })().catch(e => { console.error("ERRO RD:", limpa(e.message)); process.exit(1); });

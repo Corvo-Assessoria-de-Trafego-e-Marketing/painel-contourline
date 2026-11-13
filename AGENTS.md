@@ -42,7 +42,12 @@ a fonte fica no segundo cérebro, em `docs/SEGURANCA.md`). O essencial:
   empresa e o identificador do contato nunca entram no arquivo, no log nem no
   repositório. O que a leitura do RD já fez (um registro por contato) fica
   criptografado com `RD_STATE_KEY` no ramo `rd-dados` (`state.enc`, um commit só,
-  sobrescrito a cada rodada); no PC, sem a chave, fica em `.cache/` (fora do Git).
+  sobrescrito a cada rodada); no PC, sem a chave, fica em `.cache/` (fora do Git)
+  e sem nome nem e-mail.
+- **Lista de leads (aba Comercial):** nome e e-mail só existem em `leads.enc`, no
+  ramo `rd-dados`, criptografados com o secret `PAINEL_SENHA` (PBKDF2 + AES-GCM);
+  a página abre com a mesma senha. Sem o secret, a lista não é gerada. Nunca
+  grave a senha em arquivo, nunca a coloque no código e nunca gere a lista em texto.
 - **Atualização em corrente:** o `update-data.yml` roda ~5 h atualizando a cada
   ~55 min e dispara a próxima execução sozinho; o `schedule` só reergue a
   corrente se ela cair. Não troque para `cancel-in-progress: false` nem tire o
