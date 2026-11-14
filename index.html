@@ -10,48 +10,52 @@
 <link rel="icon" href="favicon.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Visual do template dos painéis Corvo: faixa escura, barra de filtros fixa, abas, cartões e tabelas roláveis. */
+/* Visual dos painéis Corvo na identidade da Corvo (ouro sobre tinta, papel quente): faixa escura com o corvo, barra de filtros fixa, abas, cartões e tabelas roláveis. */
 :root{
   color-scheme:light;
-  --plane:#eef1f5;--surface:#fff;--surface-2:#f7f9fb;--ink:#0d1017;--ink-2:#535a66;--muted:#868d99;
-  --border:rgba(13,16,23,.10);--border-2:rgba(13,16,23,.16);
-  --accent:#2a78d6;--accent-ink:#1c5cab;--accent-wash:rgba(42,120,214,.10);
-  --good:#0ca30c;--good-ink:#0a7c0a;--good-wash:rgba(12,163,12,.11);
-  --warn:#b4790a;--warn-wash:rgba(230,157,20,.14);
-  --crit:#d03b3b;--crit-ink:#b32a2a;--crit-wash:rgba(208,59,59,.11);
-  --grid:#e4e7ec;--area-top:rgba(42,120,214,.28);
-  --header:#12151b;--header-ink:#eef1f5;--header-sub:#9aa2af;
-  --s1:#2a78d6;--s2:#0f9b8e;--s3:#7a5af0;--s4:#d9822b;--s5:#c2417a;--s6:#9aa3b2;
-  --shadow:0 1px 2px rgba(13,16,23,.05),0 10px 28px rgba(13,16,23,.055);--r:14px;
+  --plane:#efece3;--surface:#faf8f2;--surface-2:#f3f0e7;--ink:#17150d;--ink-2:#55524a;--muted:#8c897c;
+  --border:rgba(23,21,13,.11);--border-2:rgba(23,21,13,.18);
+  --accent:#bd8419;--accent-ink:#9a6a12;--accent-wash:rgba(189,132,25,.12);
+  --good:#1c9a5b;--good-ink:#157043;--good-wash:rgba(28,154,91,.12);
+  --warn:#bd6a16;--warn-wash:rgba(189,106,22,.14);
+  --crit:#c33f2d;--crit-ink:#9e3122;--crit-wash:rgba(195,63,45,.12);
+  --grid:#e4dfd0;--area-top:rgba(189,132,25,.24);
+  --header:#131109;--header-ink:#f4f1e9;--header-sub:#9c9788;
+  --s1:#bd8419;--s2:#1f8a7e;--s3:#6a55d8;--s4:#2f6fb8;--s5:#b8436f;--s6:#a39f92;
+  --shadow:0 1px 2px rgba(23,21,13,.05),0 16px 40px rgba(23,21,13,.07);--r:14px;
   --font-display:"Fraunces",Georgia,"Times New Roman",serif;
   --font-ui:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
   --font-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --plane:#0a0c10;--surface:#15181e;--surface-2:#1a1e25;--ink:#f1f3f7;--ink-2:#a7aeba;--muted:#7c838f;
-  --border:rgba(255,255,255,.10);--border-2:rgba(255,255,255,.17);
-  --accent:#3d8bea;--accent-ink:#82b4f1;--accent-wash:rgba(61,139,234,.16);
-  --good:#28b828;--good-ink:#54cf54;--good-wash:rgba(40,184,40,.16);--warn:#e0a52a;--warn-wash:rgba(224,165,42,.16);
-  --crit:#e86b6b;--crit-ink:#f08a8a;--crit-wash:rgba(232,107,107,.16);
-  --grid:#282c33;--area-top:rgba(61,139,234,.34);
-  --header:#0d0f13;--header-ink:#eef1f5;--header-sub:#8b93a0;
-  --s1:#3d8bea;--s2:#22b5a6;--s3:#9479f5;--s4:#e89a4a;--s5:#de5f97;--s6:#6d7584;
-  --shadow:0 1px 2px rgba(0,0,0,.45),0 10px 28px rgba(0,0,0,.4);color-scheme:dark}}
+  --plane:#0a0b0f;--surface:#12141a;--surface-2:#191c24;--ink:#f4f1e9;--ink-2:#a7a595;--muted:#7d7b6f;
+  --border:rgba(244,241,233,.09);--border-2:rgba(244,241,233,.17);
+  --accent:#e8b84b;--accent-ink:#f2ce74;--accent-wash:rgba(232,184,75,.13);
+  --good:#54c98a;--good-ink:#7bdaa6;--good-wash:rgba(84,201,138,.15);--warn:#e08a37;--warn-wash:rgba(224,138,55,.17);
+  --crit:#e35d50;--crit-ink:#ef8377;--crit-wash:rgba(227,93,80,.15);
+  --grid:#20222a;--area-top:rgba(232,184,75,.24);
+  --header:#0b0c10;--header-ink:#f4f1e9;--header-sub:#8f8e80;
+  --s1:#e8b84b;--s2:#3fbfae;--s3:#9a87f2;--s4:#5f9be6;--s5:#e0739e;--s6:#6f6d61;
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 16px 44px rgba(0,0,0,.42);color-scheme:dark}}
 :root[data-theme="dark"]{
-  --plane:#0a0c10;--surface:#15181e;--surface-2:#1a1e25;--ink:#f1f3f7;--ink-2:#a7aeba;--muted:#7c838f;
-  --border:rgba(255,255,255,.10);--border-2:rgba(255,255,255,.17);
-  --accent:#3d8bea;--accent-ink:#82b4f1;--accent-wash:rgba(61,139,234,.16);
-  --good:#28b828;--good-ink:#54cf54;--good-wash:rgba(40,184,40,.16);--warn:#e0a52a;--warn-wash:rgba(224,165,42,.16);
-  --crit:#e86b6b;--crit-ink:#f08a8a;--crit-wash:rgba(232,107,107,.16);
-  --grid:#282c33;--area-top:rgba(61,139,234,.34);
-  --header:#0d0f13;--header-ink:#eef1f5;--header-sub:#8b93a0;
-  --s1:#3d8bea;--s2:#22b5a6;--s3:#9479f5;--s4:#e89a4a;--s5:#de5f97;--s6:#6d7584;
-  --shadow:0 1px 2px rgba(0,0,0,.45),0 10px 28px rgba(0,0,0,.4);color-scheme:dark}
+  --plane:#0a0b0f;--surface:#12141a;--surface-2:#191c24;--ink:#f4f1e9;--ink-2:#a7a595;--muted:#7d7b6f;
+  --border:rgba(244,241,233,.09);--border-2:rgba(244,241,233,.17);
+  --accent:#e8b84b;--accent-ink:#f2ce74;--accent-wash:rgba(232,184,75,.13);
+  --good:#54c98a;--good-ink:#7bdaa6;--good-wash:rgba(84,201,138,.15);--warn:#e08a37;--warn-wash:rgba(224,138,55,.17);
+  --crit:#e35d50;--crit-ink:#ef8377;--crit-wash:rgba(227,93,80,.15);
+  --grid:#20222a;--area-top:rgba(232,184,75,.24);
+  --header:#0b0c10;--header-ink:#f4f1e9;--header-sub:#8f8e80;
+  --s1:#e8b84b;--s2:#3fbfae;--s3:#9a87f2;--s4:#5f9be6;--s5:#e0739e;--s6:#6f6d61;
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 16px 44px rgba(0,0,0,.42);color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0}
-body{background:var(--plane);color:var(--ink);font-family:var(--font-ui);font-size:14px;line-height:1.45}
+body{background:radial-gradient(120% 70% at 50% -12%,var(--accent-wash),transparent 60%) no-repeat,var(--plane);color:var(--ink);font-family:var(--font-ui);font-size:14px;line-height:1.45}
 .wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-header.top{background:var(--header);color:var(--header-ink)}
+header.top{background:var(--header);color:var(--header-ink);position:relative;overflow:hidden}
+header.top::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(90% 240% at 14% -60%,rgba(232,184,75,.16),transparent 55%)}
+header.top .wrap{position:relative}
+.brand{display:flex;align-items:center;gap:13px}
+.raven{height:30px;width:auto;flex:none;filter:drop-shadow(0 2px 8px rgba(232,184,75,.4))}
 header.top .wrap{padding-block:22px 18px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
 .brand h1{font-family:var(--font-display);font-weight:600;font-size:28px;margin:0;letter-spacing:-.01em}
 .brand p{margin:2px 0 0;color:var(--header-sub);font-size:13px}
@@ -138,7 +142,7 @@ svg text{font-family:var(--font-ui)}
 .alert.crit b{color:var(--crit-ink)}
 .vazio{color:var(--muted);font-size:13px;padding:8px 0}
 .btn{appearance:none;border:1px solid var(--border-2);background:var(--surface);color:var(--ink);font:600 12.5px var(--font-ui);padding:6px 12px;border-radius:8px;cursor:pointer}
-.btn:hover{background:var(--surface-2)}.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:hover{background:var(--surface-2)}.btn.pri{background:var(--accent);border-color:var(--accent);color:#161206}
 .lista-acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .lista-acoes input{font:500 13px var(--font-ui);color:var(--ink);background:var(--surface-2);border:1px solid var(--border-2);border-radius:8px;padding:6px 10px;min-width:220px;max-width:100%}
 #t-lista td.l,#t-lista th.l{text-align:left}#t-lista .mail{display:block;color:var(--ink-2);font-size:12px}
@@ -158,7 +162,7 @@ footer .wrap{padding-block:0 30px;color:var(--muted);font-size:12px}
 </head>
 <body>
 <header class="top"><div class="wrap">
-  <div class="brand"><h1>Contourline</h1><p>Captação · Meta Ads, Google Ads e RD Station</p></div>
+  <div class="brand"><img class="raven" src="logo-mark.png" alt="Corvo Assessoria" width="49" height="30"><div><h1>Contourline</h1><p>Painel de captação · Meta Ads, Google Ads e RD Station · Corvo Assessoria</p></div></div>
   <div class="stamp" id="stamp">Carregando…</div>
 </div></header>
 <div class="aviso" id="aviso" hidden><div class="wrap" id="aviso-txt"></div></div>
@@ -454,7 +458,7 @@ function comercial() {
     + kpi("Em etapa avançada", int(soma(R.filter(r => r.avan), "n")), "Negociação, demonstração, proposta ou contrato") + kpi("Perdidos", int(pd), pct(pd, lc) + " dos leads")
     + kpi("Sem dono no CRM", int(semDono), "Leads em aberto sem responsável") + kpi("Qualificados parados", int(parados), "Sem negociação há mais de 3 dias");
   $("#alerta-parados").hidden = !parados;
-  $("#alerta-parados").innerHTML = `<b>${int(parados)} leads qualificados sem negociação aberta há mais de 3 dias.</b> A lista com os nomes fica no CRM (o painel público não mostra dados pessoais).`;
+  $("#alerta-parados").innerHTML = `<b>${int(parados)} leads qualificados sem negociação aberta há mais de 3 dias.</b> Os nomes estão na Lista de leads, no fim desta aba (abre com a senha).`;
   const S = [["Perdido", "var(--crit)"], ["Sem negociação", "var(--s6)"], ["SDR", "var(--s1)"], ["Outros funis", "var(--s3)"], ["Funil de vendas", "var(--s2)"], ["Etapa avançada", "var(--good)"]];
   const semana = d => { const x = new Date(d + "T12:00:00Z"); const w = (x.getUTCDay() + 6) % 7; x.setUTCDate(x.getUTCDate() - w); return x.toISOString().slice(0, 10); };
   const C = {}; for (const r of R) { const w = semana(r.d); C[w] = C[w] || {}; C[w][r.etapa] = (C[w][r.etapa] || 0) + r.n; }
